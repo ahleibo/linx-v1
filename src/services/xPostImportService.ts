@@ -24,8 +24,10 @@ export class XPostImportService {
     try {
       const tweetId = this.extractTweetId(url);
       if (!tweetId) {
-        return { success: false, error: 'Invalid X/Twitter URL format' };
+        return { success: false, error: 'Invalid X/Twitter URL format. Please use a valid post URL.' };
       }
+
+      console.log('Importing tweet with ID:', tweetId);
 
       // Call the fetch-tweet edge function
       const { data, error } = await supabase.functions.invoke('fetch-tweet', {
@@ -38,8 +40,10 @@ export class XPostImportService {
       }
 
       if (!data || !data.data) {
-        return { success: false, error: 'Tweet not found or not accessible' };
+        return { success: false, error: 'Tweet not found or may be private. Please check the URL and try again.' };
       }
+
+      console.log('Tweet data received:', data);
 
       // Process the Twitter API response
       const processedData = this.processTwitterApiResponse(data, url);
@@ -54,10 +58,11 @@ export class XPostImportService {
         return { success: false, error: saveError.message || 'Failed to save post' };
       }
 
+      console.log('Post saved successfully:', savedPost);
       return { success: true, post: savedPost };
     } catch (error: any) {
       console.error('Import error:', error);
-      return { success: false, error: error.message || 'Failed to import post' };
+      return { success: false, error: error.message || 'Failed to import post. Please try again.' };
     }
   }
 
@@ -80,8 +85,8 @@ export class XPostImportService {
     if (tweet.attachments?.media_keys) {
       tweet.attachments.media_keys.forEach((mediaKey: string) => {
         const mediaItem = media.find((m: any) => m.media_key === mediaKey);
-        if (mediaItem?.url) {
-          mediaUrls.push(mediaItem.url);
+        if (mediaItem?.url || mediaItem?.preview_image_url) {
+          mediaUrls.push(mediaItem.url || mediaItem.preview_image_url);
         }
       });
     }
@@ -90,7 +95,7 @@ export class XPostImportService {
       xPostId: tweet.id,
       authorName: author.name,
       authorUsername: author.username,
-      authorAvatar: author.profile_image_url,
+      authorAvatar: author.profile_image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(author.name)}&background=1DA1F2&color=fff&size=48`,
       content: tweet.text,
       mediaUrls: mediaUrls,
       createdAt: tweet.created_at,
