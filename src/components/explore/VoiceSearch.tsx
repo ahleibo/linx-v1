@@ -7,8 +7,8 @@ import { Card } from '@/components/ui/card';
 // Extend Window interface for TypeScript
 declare global {
   interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
   }
 }
 
@@ -20,7 +20,7 @@ interface VoiceSearchProps {
 export const VoiceSearch: React.FC<VoiceSearchProps> = ({ onResult, onClose }) => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+  const [recognition, setRecognition] = useState<any>(null);
 
   useEffect(() => {
     // Check if speech recognition is supported
