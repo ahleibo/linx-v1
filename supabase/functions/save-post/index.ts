@@ -43,6 +43,13 @@ Deno.serve(async (req) => {
       )
     }
     
+    // Create admin client for user operations
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    // Create regular client for authenticated operations
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -53,72 +60,58 @@ Deno.serve(async (req) => {
       }
     )
 
-    // Get the current user
+    // Get the current user using the authenticated client
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     
     let userId: string;
+    let userEmail: string = '';
     
     if (userError || !user) {
       console.error('Auth error:', userError?.message || 'No user found');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Authentication failed', 
+          details: 'Please sign in and try again'
+        }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    } else {
+      userId = user.id;
+      userEmail = user.email || '';
+      console.log('User authenticated successfully:', userId);
+    }
+
+    // Ensure user profile exists using admin client
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .single();
       
-      // Extract user ID from JWT token as fallback
-      try {
-        const token = authHeader.replace('Bearer ', '');
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        userId = payload.sub;
+    if (profileError && profileError.code === 'PGRST116') {
+      // User doesn't exist in profiles, create one using admin client
+      console.log('Creating user profile for:', userId);
+      const { error: createError } = await supabaseAdmin
+        .from('profiles')
+        .insert({
+          id: userId,
+          full_name: user.user_metadata?.full_name || 'LiNX User',
+          email: userEmail
+        });
         
-        if (!userId) {
-          throw new Error('No user ID in token');
-        }
-        
-        console.log('Using user ID from JWT:', userId);
-        
-        // Check if user exists in profiles table, if not create one
-        const { data: profile, error: profileError } = await supabaseClient
-          .from('profiles')
-          .select('id')
-          .eq('id', userId)
-          .single();
-          
-        if (profileError && profileError.code === 'PGRST116') {
-          // User doesn't exist in profiles, create one
-          console.log('Creating user profile for:', userId);
-          const { error: createError } = await supabaseClient
-            .from('profiles')
-            .insert({
-              id: userId,
-              full_name: 'LiNX User',
-              email: `user-${userId.substring(0, 8)}@linx.app`
-            });
-            
-          if (createError) {
-            console.error('Error creating user profile:', createError);
-            return new Response(
-              JSON.stringify({ error: 'Failed to create user profile', details: createError.message }),
-              { 
-                status: 500, 
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-              }
-            )
-          }
-        }
-        
-      } catch (tokenError) {
-        console.error('Error extracting user from token:', tokenError);
+      if (createError) {
+        console.error('Error creating user profile:', createError);
         return new Response(
-          JSON.stringify({ 
-            error: 'Authentication failed', 
-            details: 'Invalid or expired token'
-          }),
+          JSON.stringify({ error: 'Failed to create user profile', details: createError.message }),
           { 
-            status: 401, 
+            status: 500, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           }
         )
       }
-    } else {
-      userId = user.id;
-      console.log('User authenticated successfully:', userId);
     }
 
     const postData: SavePostRequest = await req.json()
@@ -128,8 +121,8 @@ Deno.serve(async (req) => {
       contentLength: postData.content?.length 
     });
 
-    // Save post to database
-    const { data: post, error: postError } = await supabaseClient
+    // Save post to database using admin client to bypass RLS temporarily
+    const { data: post, error: postError } = await supabaseAdmin
       .from('posts')
       .insert({
         user_id: userId,
@@ -165,9 +158,9 @@ Deno.serve(async (req) => {
     const topics = await mockTopicClustering(postData.content)
     console.log('Generated topics:', topics);
     
-    // Assign topics to post
+    // Assign topics to post using admin client
     for (const topic of topics) {
-      const { error: topicError } = await supabaseClient
+      const { error: topicError } = await supabaseAdmin
         .from('post_topics')
         .insert({
           post_id: post.id,

@@ -35,12 +35,12 @@ export const postImportService = {
   async importPost(postData: XPostData) {
     console.log('Starting import for post:', postData.url);
     
-    // Get current user session with better error handling
+    // Get current user session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError) {
       console.error('Session error:', sessionError);
-      throw new Error('Authentication error: ' + sessionError.message);
+      throw new Error('Authentication error. Please sign out and sign back in.');
     }
     
     if (!session?.user) {
@@ -79,17 +79,7 @@ export const postImportService = {
 
       if (error) {
         console.error('Import error details:', error);
-        
-        // Provide more specific error messages
-        if (error.message?.includes('Edge Function returned a non-2xx status code')) {
-          throw new Error('Server error while saving post. Please try again in a moment.');
-        } else if (error.message?.includes('Authentication')) {
-          throw new Error('Authentication failed. Please sign out and sign back in.');
-        } else if (error.message?.includes('Network')) {
-          throw new Error('Network error. Please check your internet connection and try again.');
-        } else {
-          throw new Error(`Import failed: ${error.message || 'Unknown error occurred'}`);
-        }
+        throw new Error(`Import failed: ${error.message || 'Unknown error occurred'}`);
       }
       
       if (data?.success) {
@@ -102,12 +92,6 @@ export const postImportService = {
       
     } catch (functionError) {
       console.error('Function invocation error:', functionError);
-      
-      if (functionError.message?.includes('Failed to fetch')) {
-        throw new Error('Network error. Please check your internet connection and try again.');
-      }
-      
-      // Re-throw the error as-is if it's already a formatted error from above
       throw functionError;
     }
   },
