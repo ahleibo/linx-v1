@@ -14,14 +14,25 @@ export function useAuth() {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.id);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Handle auth errors
+        if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+          console.log('Auth event triggered:', event);
+        }
       }
     );
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('Session error:', error);
+        // Force sign out if session is invalid
+        supabase.auth.signOut();
+      }
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -109,13 +120,23 @@ export function useAuth() {
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Sign out error:', error);
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Signed out",
+          description: "You have been signed out successfully.",
+        });
+      }
+    } catch (error) {
+      console.error('Unexpected sign out error:', error);
     }
   };
 
@@ -144,6 +165,23 @@ export function useAuth() {
     }
   };
 
+  // Force refresh session if needed
+  const refreshSession = async () => {
+    try {
+      const { error } = await supabase.auth.refreshSession();
+      if (error) {
+        console.error('Session refresh failed:', error);
+        await signOut();
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Session refresh error:', error);
+      await signOut();
+      return false;
+    }
+  };
+
   return {
     user,
     session,
@@ -152,5 +190,6 @@ export function useAuth() {
     signIn,
     signOut,
     signInWithProvider,
+    refreshSession,
   };
 }

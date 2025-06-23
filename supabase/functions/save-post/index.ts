@@ -42,14 +42,14 @@ Deno.serve(async (req) => {
         }
       )
     }
-    
-    // Create admin client for user operations
+
+    // Create admin client
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Create regular client for authenticated operations
+    // Create client for user validation
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -60,31 +60,75 @@ Deno.serve(async (req) => {
       }
     )
 
-    // Get the current user using the authenticated client
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    
+    // First check if user exists in auth
     let userId: string;
     let userEmail: string = '';
-    
-    if (userError || !user) {
-      console.error('Auth error:', userError?.message || 'No user found');
+
+    try {
+      const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+      
+      if (userError || !user) {
+        console.error('User authentication failed:', userError?.message || 'No user found');
+        
+        // Try to extract user ID from JWT token as fallback
+        try {
+          const token = authHeader.replace('Bearer ', '');
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          userId = payload.sub;
+          userEmail = payload.email || '';
+          console.log('Extracted user ID from JWT:', userId);
+          
+          // Check if this user exists in auth.users using admin client
+          const { data: authUser, error: authUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
+          
+          if (authUserError || !authUser.user) {
+            console.error('User does not exist in auth system:', authUserError?.message);
+            return new Response(
+              JSON.stringify({ 
+                error: 'User session is invalid. Please sign out and sign back in.',
+                details: 'Your authentication session has expired or the user account no longer exists.'
+              }),
+              { 
+                status: 401, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              }
+            )
+          }
+          
+          console.log('User exists in auth system, proceeding with import');
+        } catch (jwtError) {
+          console.error('Failed to extract user from JWT:', jwtError);
+          return new Response(
+            JSON.stringify({ 
+              error: 'Invalid authentication token. Please sign out and sign back in.',
+              details: 'Unable to validate your authentication session.'
+            }),
+            { 
+              status: 401, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          )
+        }
+      } else {
+        userId = user.id;
+        userEmail = user.email || '';
+        console.log('User authenticated successfully:', userId);
+      }
+    } catch (authError) {
+      console.error('Authentication check failed:', authError);
       return new Response(
         JSON.stringify({ 
-          error: 'Authentication failed', 
-          details: 'Please sign in and try again'
+          error: 'Authentication failed. Please sign out and sign back in.',
+          details: 'Unable to verify your authentication session.'
         }),
         { 
           status: 401, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
-    } else {
-      userId = user.id;
-      userEmail = user.email || '';
-      console.log('User authenticated successfully:', userId);
     }
 
-    // Ensure user profile exists using admin client
+    // Ensure user profile exists
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('id')
@@ -92,13 +136,12 @@ Deno.serve(async (req) => {
       .single();
       
     if (profileError && profileError.code === 'PGRST116') {
-      // User doesn't exist in profiles, create one using admin client
       console.log('Creating user profile for:', userId);
       const { error: createError } = await supabaseAdmin
         .from('profiles')
         .insert({
           id: userId,
-          full_name: user.user_metadata?.full_name || 'LiNX User',
+          full_name: 'LiNX User',
           email: userEmail
         });
         
@@ -112,6 +155,15 @@ Deno.serve(async (req) => {
           }
         )
       }
+    } else if (profileError) {
+      console.error('Error checking user profile:', profileError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to verify user profile', details: profileError.message }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     const postData: SavePostRequest = await req.json()
@@ -121,7 +173,7 @@ Deno.serve(async (req) => {
       contentLength: postData.content?.length 
     });
 
-    // Save post to database using admin client to bypass RLS temporarily
+    // Save post using admin client
     const { data: post, error: postError } = await supabaseAdmin
       .from('posts')
       .insert({
@@ -158,7 +210,7 @@ Deno.serve(async (req) => {
     const topics = await mockTopicClustering(postData.content)
     console.log('Generated topics:', topics);
     
-    // Assign topics to post using admin client
+    // Assign topics to post
     for (const topic of topics) {
       const { error: topicError } = await supabaseAdmin
         .from('post_topics')
@@ -199,11 +251,9 @@ Deno.serve(async (req) => {
 })
 
 async function mockTopicClustering(content: string) {
-  // Mock AI clustering logic
   const contentLower = content.toLowerCase()
   const results = []
 
-  // Enhanced topic detection
   const topicMap = {
     'technology': { id: 'd0bb5d7f-b909-40a0-8949-0175ea87dbb3', confidence: 0.9 },
     'tech': { id: 'd0bb5d7f-b909-40a0-8949-0175ea87dbb3', confidence: 0.85 },

@@ -40,12 +40,12 @@ export const postImportService = {
     
     if (sessionError) {
       console.error('Session error:', sessionError);
-      throw new Error('Authentication error. Please sign out and sign back in.');
+      throw new Error('Your session has expired. Please sign out and sign back in.');
     }
     
     if (!session?.user) {
       console.error('No authenticated user found');
-      throw new Error('You must be logged in to import posts. Please sign in and try again.');
+      throw new Error('You must be logged in to import posts. Please sign in.');
     }
     
     console.log('User authenticated, proceeding with import. User ID:', session.user.id);
@@ -79,6 +79,14 @@ export const postImportService = {
 
       if (error) {
         console.error('Import error details:', error);
+        
+        // Handle specific authentication errors
+        if (error.message?.includes('session is invalid') || 
+            error.message?.includes('sign out and sign back in') ||
+            error.message?.includes('authentication session')) {
+          throw new Error('Your session has expired. Please sign out and sign back in to continue.');
+        }
+        
         throw new Error(`Import failed: ${error.message || 'Unknown error occurred'}`);
       }
       
@@ -92,6 +100,13 @@ export const postImportService = {
       
     } catch (functionError) {
       console.error('Function invocation error:', functionError);
+      
+      // Check if it's a network or authentication error
+      if (functionError.message?.includes('session') || 
+          functionError.message?.includes('auth')) {
+        throw new Error('Authentication error. Please sign out and sign back in.');
+      }
+      
       throw functionError;
     }
   },
