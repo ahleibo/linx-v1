@@ -35,7 +35,7 @@ export const postImportService = {
   async importPost(postData: XPostData) {
     console.log('Starting import for post:', postData.url);
     
-    // Get current user session
+    // Get current user session with better error handling
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError) {
@@ -44,50 +44,72 @@ export const postImportService = {
     }
     
     if (!session?.user) {
-      throw new Error('You must be logged in to import posts');
+      console.error('No authenticated user found');
+      throw new Error('You must be logged in to import posts. Please sign in and try again.');
     }
     
-    console.log('User authenticated, proceeding with import');
+    console.log('User authenticated, proceeding with import. User ID:', session.user.id);
     
     const postId = this.parseXUrl(postData.url);
     
-    const { data, error } = await supabase.functions.invoke('save-post', {
-      body: {
-        xPostId: postId || `manual_${Date.now()}`,
-        authorName: postData.authorName,
-        authorUsername: postData.authorUsername,
-        authorAvatar: postData.authorAvatar,
-        content: postData.content,
-        mediaUrls: postData.mediaUrls || [],
-        createdAt: postData.createdAt,
-        likesCount: postData.likesCount || 0,
-        retweetsCount: postData.retweetsCount || 0,
-        repliesCount: postData.repliesCount || 0,
-        xUrl: postData.url
+    try {
+      const { data, error } = await supabase.functions.invoke('save-post', {
+        body: {
+          xPostId: postId || `manual_${Date.now()}`,
+          authorName: postData.authorName,
+          authorUsername: postData.authorUsername,
+          authorAvatar: postData.authorAvatar,
+          content: postData.content,
+          mediaUrls: postData.mediaUrls || [],
+          createdAt: postData.createdAt,
+          likesCount: postData.likesCount || 0,
+          retweetsCount: postData.retweetsCount || 0,
+          repliesCount: postData.repliesCount || 0,
+          xUrl: postData.url
+        }
+      });
+
+      console.log('Import response:', { data, error });
+
+      if (error) {
+        console.error('Import error details:', error);
+        
+        // Provide more specific error messages
+        if (error.message?.includes('Edge Function returned a non-2xx status code')) {
+          throw new Error('Failed to save post. Please check your internet connection and try again.');
+        } else if (error.message?.includes('Authentication')) {
+          throw new Error('Authentication failed. Please sign out and sign back in.');
+        } else {
+          throw new Error(`Import failed: ${error.message || 'Unknown error occurred'}`);
+        }
       }
-    });
-
-    console.log('Import response:', { data, error });
-
-    if (error) {
-      console.error('Import error:', error);
-      throw error;
+      
+      return data;
+    } catch (functionError) {
+      console.error('Function invocation error:', functionError);
+      
+      if (functionError.message?.includes('Failed to fetch')) {
+        throw new Error('Network error. Please check your internet connection and try again.');
+      }
+      
+      throw functionError;
     }
-    return data;
   },
 
   // Import multiple posts
   async importMultiplePosts(posts: XPostData[]) {
     const results = [];
+    
     for (const post of posts) {
       try {
         const result = await this.importPost(post);
         results.push({ success: true, post, result });
       } catch (error) {
         console.error('Failed to import post:', post.url, error);
-        results.push({ success: false, post, error });
+        results.push({ success: false, post, error: error.message || 'Unknown error' });
       }
     }
+    
     return results;
   }
 };

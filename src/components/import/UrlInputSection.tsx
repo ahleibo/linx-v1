@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Link, AlertCircle } from 'lucide-react';
+import { Loader2, Link, AlertCircle, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { XPostFetcher } from '@/services/xPostFetcher';
 import { type XPostData } from '@/services/postImportService';
@@ -17,6 +17,7 @@ export const UrlInputSection = ({ onPostFetched }: UrlInputSectionProps) => {
   const [isFetching, setIsFetching] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   const validateUrl = (url: string): boolean => {
     const cleanUrl = url.trim();
@@ -32,6 +33,7 @@ export const UrlInputSection = ({ onPostFetched }: UrlInputSectionProps) => {
   const handleFetchPost = async () => {
     console.log('Starting fetch process for URL:', urlInput);
     setError(null);
+    setSuccess(false);
     
     if (!urlInput.trim()) {
       setError("Please enter a valid X post URL.");
@@ -54,10 +56,16 @@ export const UrlInputSection = ({ onPostFetched }: UrlInputSectionProps) => {
         onPostFetched(postData);
         setUrlInput('');
         setError(null);
+        setSuccess(true);
+        
         toast({
           title: "Post fetched successfully",
-          description: "Review the post below and click Import to save it."
+          description: "Review the post below and click Import to save it.",
+          duration: 3000
         });
+
+        // Reset success state after a delay
+        setTimeout(() => setSuccess(false), 3000);
       } else {
         console.error('No post data returned from fetcher');
         setError("Unable to fetch post data. Please check the URL and try again.");
@@ -69,14 +77,21 @@ export const UrlInputSection = ({ onPostFetched }: UrlInputSectionProps) => {
       }
     } catch (error) {
       console.error('Error fetching post:', error);
-      setError(`Failed to fetch post data: ${error.message || 'Unknown error'}`);
+      const errorMessage = error.message || 'Unknown error occurred';
+      setError(`Failed to fetch post data: ${errorMessage}`);
       toast({
         title: "Error fetching post",
-        description: `Failed to fetch post data: ${error.message || 'Please try again.'}`,
+        description: `Failed to fetch post data: ${errorMessage}`,
         variant: "destructive"
       });
     } finally {
       setIsFetching(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !isFetching && urlInput.trim()) {
+      handleFetchPost();
     }
   };
 
@@ -85,24 +100,30 @@ export const UrlInputSection = ({ onPostFetched }: UrlInputSectionProps) => {
       <div className="space-y-2">
         <Label className="text-slate-300">X Post URL</Label>
         <div className="flex space-x-2">
-          <Input
-            placeholder="https://x.com/username/status/123456789"
-            value={urlInput}
-            onChange={(e) => {
-              setUrlInput(e.target.value);
-              setError(null);
-            }}
-            className={`bg-slate-700/50 border-slate-600 text-white flex-1 ${
-              error ? 'border-red-500' : ''
-            }`}
-            onKeyPress={(e) => e.key === 'Enter' && !isFetching && handleFetchPost()}
-            disabled={isFetching}
-          />
+          <div className="relative flex-1">
+            <Input
+              placeholder="https://x.com/username/status/123456789"
+              value={urlInput}
+              onChange={(e) => {
+                setUrlInput(e.target.value);
+                setError(null);
+                setSuccess(false);
+              }}
+              className={`bg-slate-700/50 border-slate-600 text-white pr-10 ${
+                error ? 'border-red-500' : success ? 'border-green-500' : ''
+              }`}
+              onKeyPress={handleKeyPress}
+              disabled={isFetching}
+            />
+            {success && (
+              <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-500" />
+            )}
+          </div>
           <Button
             type="button"
             onClick={handleFetchPost}
             disabled={isFetching || !urlInput.trim()}
-            className="bg-blue-500 hover:bg-blue-600"
+            className="bg-blue-500 hover:bg-blue-600 px-4"
           >
             {isFetching ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -113,9 +134,16 @@ export const UrlInputSection = ({ onPostFetched }: UrlInputSectionProps) => {
         </div>
         
         {error && (
-          <div className="flex items-center space-x-2 text-red-400 text-sm">
-            <AlertCircle className="h-4 w-4" />
+          <div className="flex items-center space-x-2 text-red-400 text-sm bg-red-900/20 p-3 rounded-md border border-red-500/20">
+            <AlertCircle className="h-4 w-4 flex-shrink-0" />
             <span>{error}</span>
+          </div>
+        )}
+        
+        {success && (
+          <div className="flex items-center space-x-2 text-green-400 text-sm bg-green-900/20 p-3 rounded-md border border-green-500/20">
+            <CheckCircle className="h-4 w-4 flex-shrink-0" />
+            <span>Post data fetched successfully! Review below and click Import.</span>
           </div>
         )}
         
