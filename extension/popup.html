@@ -1,0 +1,148 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 320px;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      margin: 0;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    
+    .subtitle {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    
+    input {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      box-sizing: border-box;
+      background: rgba(255, 255, 255, 0.9);
+      color: #333;
+    }
+    
+    input:focus {
+      outline: none;
+      background: white;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+    }
+    
+    button {
+      width: 100%;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    button:hover {
+      background: rgba(255, 255, 255, 0.3);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .status {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      text-align: center;
+    }
+    
+    .status.success {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    
+    .status.error {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    
+    .instructions {
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    
+    .instructions strong {
+      display: block;
+      margin-bottom: 8px;
+    }
+    
+    .link {
+      color: #93c5fd;
+      text-decoration: none;
+    }
+    
+    .link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">LiNX</div>
+    <div class="subtitle">X Post Saver Extension</div>
+  </div>
+  
+  <form id="configForm">
+    <div class="form-group">
+      <label for="authToken">Authentication Token:</label>
+      <input type="password" id="authToken" placeholder="Enter your LiNX auth token..." />
+    </div>
+    
+    <button type="submit">Save Configuration</button>
+  </form>
+  
+  <div id="status"></div>
+  
+  <div class="instructions">
+    <strong>How to get your auth token:</strong>
+    1. Open <a href="#" class="link" id="linxLink">your LiNX app</a><br>
+    2. Open browser DevTools (F12)<br>
+    3. Go to Application → Local Storage<br>
+    4. Find "supabase.auth.token" and copy the access_token value<br>
+    5. Paste it above and click Save
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>

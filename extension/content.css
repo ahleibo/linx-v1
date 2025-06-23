@@ -1,0 +1,33 @@
+
+/* Additional styles for the extension */
+.linx-save-btn {
+  z-index: 9999;
+  position: relative;
+}
+
+/* Dark mode support */
+[data-theme="dark"] .linx-save-btn {
+  background: linear-gradient(135deg, #1DA1F2, #0d8bd9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .linx-save-btn {
+    border: 2px solid #fff;
+    font-weight: bold;
+  }
+}
+
+/* Responsive design for mobile */
+@media (max-width: 600px) {
+  .linx-save-btn {
+    padding: 4px 12px;
+    font-size: 12px;
+  }
+  
+  .linx-icon {
+    width: 12px;
+    height: 12px;
+  }
+}
