@@ -36,35 +36,28 @@ export class XPostFetcher {
     console.log('Parsed URL data:', parsed);
 
     try {
-      // Try Twitter's oEmbed API first - this often has the actual content
-      const result = await this.fetchViaOEmbed(url, parsed);
-      if (result && result.content && !result.content.startsWith('Post from @')) {
-        console.log('Successfully fetched tweet data via oEmbed:', result);
-        return result;
+      // Try multiple methods to get tweet content
+      const methods = [
+        () => this.fetchViaOEmbed(url, parsed),
+        () => this.fetchViaProxy(url, parsed),
+        () => this.fetchViaMetaTags(url, parsed)
+      ];
+
+      for (const method of methods) {
+        try {
+          const result = await method();
+          if (result && result.content) {
+            console.log('Successfully fetched tweet data:', result);
+            return result;
+          }
+        } catch (error) {
+          console.warn('Method failed, trying next:', error);
+          continue;
+        }
       }
 
-      // Try fetching via proxy
-      const proxyResult = await this.fetchViaProxy(url, parsed);
-      if (proxyResult && proxyResult.content && !proxyResult.content.startsWith('Post from @')) {
-        console.log('Successfully fetched tweet data via proxy:', proxyResult);
-        return proxyResult;
-      }
-
-      // Try meta extraction service
-      const metaResult = await this.fetchViaMetaTags(url, parsed);
-      if (metaResult && metaResult.content && !metaResult.content.startsWith('Post from @')) {
-        console.log('Successfully fetched tweet data via meta tags:', metaResult);
-        return metaResult;
-      }
-
-      // If we got results but they're generic, try to improve them
-      const bestResult = result || proxyResult || metaResult;
-      if (bestResult) {
-        return bestResult;
-      }
-
-      // Last resort - create basic post
-      console.log('Creating basic post with minimal available info');
+      // If all methods fail, create basic post
+      console.log('All methods failed, creating basic post');
       return this.createBasicPost(url, parsed);
 
     } catch (error) {
@@ -76,7 +69,7 @@ export class XPostFetcher {
   private static createBasicPost(url: string, parsed: { username: string; postId: string }): XPostData {
     return {
       url,
-      content: `Post from @${parsed.username}`,
+      content: `Check out this post from @${parsed.username}`,
       authorName: parsed.username,
       authorUsername: parsed.username,
       authorAvatar: `https://unavatar.io/x/${parsed.username}`,
@@ -129,26 +122,21 @@ export class XPostFetcher {
   }
 
   private static extractTweetTextFromHTML(element: HTMLElement): string {
-    // Look for tweet text in various selectors
-    const selectors = [
-      'p',
-      '.tweet-text',
-      '[data-testid="tweetText"]',
-      '.js-tweet-text',
-      'blockquote p'
-    ];
+    // Get all text content and clean it up
+    let text = element.textContent || '';
+    
+    // Remove common Twitter UI elements
+    text = text
+      .replace(/pic\.twitter\.com\/\w+/g, '')
+      .replace(/https?:\/\/t\.co\/\w+/g, '')
+      .replace(/— .* \(@.*\).*$/g, '') // Remove attribution line
+      .replace(/\d{1,2}:\d{2} [AP]M · .*/g, '') // Remove timestamp
+      .replace(/\d+:\d+ [AP]M - .*/g, '') // Remove timestamp variant
+      .trim();
 
-    for (const selector of selectors) {
-      const textElement = element.querySelector(selector);
-      if (textElement && textElement.textContent) {
-        let text = textElement.textContent.trim();
-        text = this.cleanExtractedText(text);
-        
-        // Make sure it's not just metadata or empty
-        if (text && text.length > 10 && !text.includes('http://') && !text.includes('pic.twitter.com')) {
-          return text;
-        }
-      }
+    // If we got meaningful content, return it
+    if (text && text.length > 5 && !text.match(/^https?:\/\//)) {
+      return text;
     }
     
     return '';
@@ -179,12 +167,12 @@ export class XPostFetcher {
       const response = await fetch(metaUrl);
       const data = await response.json();
       
-      if (data.description && data.description.trim()) {
+      if (data.description) {
         const cleanDescription = this.cleanExtractedText(data.description);
         const authorName = this.extractAuthorFromTitle(data.title || '', parsed.username);
         
-        // Only return if we have meaningful content
-        if (cleanDescription && cleanDescription.length > 10) {
+        // Return the content we found
+        if (cleanDescription) {
           return {
             url,
             content: cleanDescription,
@@ -223,7 +211,7 @@ export class XPostFetcher {
         const match = html.match(pattern);
         if (match && match[1]) {
           const extracted = this.cleanExtractedText(match[1]);
-          if (extracted && extracted.length > 10) {
+          if (extracted) {
             content = extracted;
             break;
           }
@@ -236,8 +224,8 @@ export class XPostFetcher {
         authorName = this.extractAuthorFromTitle(titleMatch[1], parsed.username);
       }
 
-      // Only return if we have meaningful content
-      if (content && content.length > 10) {
+      // Return whatever content we found
+      if (content) {
         return {
           url,
           content,
