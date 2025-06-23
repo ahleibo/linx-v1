@@ -1,12 +1,12 @@
-
 import React, { useState } from 'react';
-import { Search, Mic, Settings, ChevronRight } from 'lucide-react';
+import { Search, Mic, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { VoiceSearch } from '@/components/explore/VoiceSearch';
 import { ImportPostsDialog } from '@/components/import/ImportPostsDialog';
+import { ProfileSettings } from '@/components/profile/ProfileSettings';
 import { useAuth } from '@/hooks/useAuth';
 import { usePosts } from '@/hooks/usePosts';
 import { useProfileStats } from '@/hooks/useProfileStats';
@@ -47,9 +47,7 @@ const Profile = () => {
           <h1 className="text-2xl font-bold">Profile</h1>
           <div className="flex items-center space-x-2">
             <ImportPostsDialog onSuccess={handleImportSuccess} />
-            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white">
-              <Settings className="h-5 w-5" />
-            </Button>
+            <ProfileSettings />
           </div>
         </div>
       </div>
