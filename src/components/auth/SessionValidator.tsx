@@ -11,12 +11,8 @@ export const SessionValidator = () => {
     const validateSession = async () => {
       if (user && session) {
         try {
-          // Test if the session is valid by making a simple request
-          const { data, error } = await fetch('/api/test', {
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`
-            }
-          });
+          // Test if the session is valid by making a simple request to Supabase
+          const { data, error } = await supabase.from('profiles').select('id').limit(1);
           
           if (error) {
             console.warn('Session validation failed, attempting refresh');
