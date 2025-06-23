@@ -1,295 +1,174 @@
 
-import { useState, useEffect, useRef } from 'react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Mic, MicOff, User, Heart, MessageCircle, Repeat2, Share } from 'lucide-react';
-import { cn } from "@/lib/utils";
+import React, { useState } from 'react';
+import { Search, Mic, Plus, TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { VoiceSearch } from '@/components/explore/VoiceSearch';
 import { usePosts } from '@/hooks/usePosts';
 import { useAuth } from '@/hooks/useAuth';
 
-interface Post {
-  id: string;
-  author_name: string;
-  author_username: string;
-  author_avatar: string | null;
-  content: string;
-  media_urls: string[] | null;
-  created_at: string;
-  likes_count: number | null;
-  retweets_count: number | null;
-  replies_count: number | null;
-  post_topics?: Array<{
-    topics: {
-      id: string;
-      name: string;
-      color: string;
-    };
-  }>;
-}
-
-const formatTimeAgo = (timestamp: string) => {
-  const now = new Date();
-  const postTime = new Date(timestamp);
-  const diffInSeconds = Math.floor((now.getTime() - postTime.getTime()) / 1000);
-  
-  if (diffInSeconds < 60) return `${diffInSeconds}s`;
-  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m`;
-  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`;
-  return `${Math.floor(diffInSeconds / 86400)}d`;
-};
-
-const PostCard = ({ post }: { post: Post }) => {
-  const topics = post.post_topics?.map(pt => pt.topics) || [];
-
-  return (
-    <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-      <div className="flex space-x-3">
-        {/* Avatar */}
-        <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-          {post.author_avatar ? (
-            <img src={post.author_avatar} alt={post.author_name} className="w-full h-full rounded-full object-cover" />
-          ) : (
-            <User className="w-6 h-6 text-white" />
-          )}
-        </div>
-        
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          {/* Header */}
-          <div className="flex items-center space-x-2 mb-1">
-            <h3 className="font-bold text-gray-900 dark:text-white text-sm">{post.author_name}</h3>
-            <span className="text-gray-500 dark:text-gray-400 text-sm">@{post.author_username}</span>
-            <span className="text-gray-500 dark:text-gray-400 text-sm">·</span>
-            <span className="text-gray-500 dark:text-gray-400 text-sm">{formatTimeAgo(post.created_at)}</span>
-          </div>
-          
-          {/* Post content */}
-          <p className="text-gray-900 dark:text-white text-sm leading-relaxed mb-3">{post.content}</p>
-          
-          {/* Topics */}
-          {topics.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-3">
-              {topics.map((topic) => (
-                <span
-                  key={topic.id}
-                  className="px-2 py-1 text-xs rounded-full text-white"
-                  style={{ backgroundColor: topic.color }}
-                >
-                  {topic.name}
-                </span>
-              ))}
-            </div>
-          )}
-          
-          {/* Media */}
-          {post.media_urls && post.media_urls.length > 0 && (
-            <div className="mb-3 grid grid-cols-2 gap-2">
-              {post.media_urls.slice(0, 4).map((url, index) => (
-                <img
-                  key={index}
-                  src={url}
-                  alt="Post media"
-                  className="rounded-lg object-cover w-full h-32"
-                />
-              ))}
-            </div>
-          )}
-          
-          {/* Actions */}
-          <div className="flex items-center justify-between max-w-md">
-            <Button variant="ghost" size="sm" className="text-gray-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2">
-              <MessageCircle className="w-4 h-4 mr-1" />
-              <span className="text-xs">{post.replies_count || 0}</span>
-            </Button>
-            
-            <Button variant="ghost" size="sm" className="text-gray-500 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 p-2">
-              <Repeat2 className="w-4 h-4 mr-1" />
-              <span className="text-xs">{post.retweets_count || 0}</span>
-            </Button>
-            
-            <Button variant="ghost" size="sm" className="text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2">
-              <Heart className="w-4 h-4 mr-1" />
-              <span className="text-xs">{post.likes_count || 0}</span>
-            </Button>
-            
-            <Button variant="ghost" size="sm" className="text-gray-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2">
-              <Share className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const Homepage = () => {
   const { user } = useAuth();
-  const {
-    posts,
-    isLoading,
-    searchResults,
-    isSearching,
-    searchQuery,
-    setSearchQuery,
-    chatMutation
-  } = usePosts();
+  const { posts, searchQuery, setSearchQuery, isLoading } = usePosts();
+  const [showVoiceSearch, setShowVoiceSearch] = useState(false);
 
-  const [isVoiceMode, setIsVoiceMode] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [aiResponse, setAiResponse] = useState<string>('');
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
-
-  const displayPosts = searchQuery ? searchResults : posts;
-  const isLoadingPosts = searchQuery ? isSearching : isLoading;
-
-  // Mock voice recognition
-  const handleVoiceToggle = () => {
-    setIsVoiceMode(!isVoiceMode);
-    if (!isVoiceMode) {
-      setIsListening(true);
-      setTimeout(() => {
-        setIsListening(false);
-        setSearchQuery('sports');
-      }, 2000);
-    } else {
-      setIsListening(false);
-      setSearchQuery('');
-    }
+  const handleVoiceResult = (transcript: string) => {
+    setSearchQuery(transcript);
+    setShowVoiceSearch(false);
   };
 
-  const handleSearch = async (query: string) => {
-    setSearchQuery(query);
-    
-    // Process AI queries
-    if (query.toLowerCase().includes('summarize') || 
-        query.toLowerCase().includes('find') || 
-        query.toLowerCase().includes('show me')) {
-      
-      try {
-        const response = await chatMutation.mutateAsync(query);
-        setAiResponse(response.message);
-      } catch (error) {
-        console.error('AI query failed:', error);
-      }
-    } else {
-      setAiResponse('');
-    }
-  };
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Please sign in</h2>
-          <p className="text-gray-600 dark:text-gray-400">You need to be authenticated to view your posts.</p>
-        </div>
-      </div>
-    );
-  }
+  // Mock trending topics for demo
+  const trendingTopics = [
+    { name: 'AI & Technology', count: 24, color: 'bg-blue-500' },
+    { name: 'Design', count: 18, color: 'bg-purple-500' },
+    { name: 'Startups', count: 15, color: 'bg-green-500' },
+    { name: 'Productivity', count: 12, color: 'bg-orange-500' }
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
-      {/* Header with Search */}
-      <div className="sticky top-0 z-10 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700">
-        <div className="px-4 py-3">
-          {/* Logo */}
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">L</span>
-            </div>
-            <h1 className="ml-2 text-xl font-bold text-gray-900 dark:text-white">Lynx</h1>
+    <div className="min-h-screen bg-slate-950 text-white">
+      {/* Header */}
+      <div className="sticky top-0 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 z-10">
+        <div className="flex items-center justify-between p-4">
+          <div>
+            <h1 className="text-2xl font-bold">Good morning</h1>
+            <p className="text-slate-400 text-sm">
+              {user?.user_metadata?.full_name || 'Explorer'}
+            </p>
+          </div>
+          <Button 
+            size="icon" 
+            className="bg-blue-500 hover:bg-blue-600 text-white"
+          >
+            <Plus className="h-5 w-5" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="p-4 space-y-6">
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-5 w-5" />
+          <Input
+            placeholder="Search your knowledge base..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 pr-12 bg-slate-800/50 border-slate-700 text-white placeholder-slate-400 focus:border-blue-500 h-12"
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowVoiceSearch(true)}
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white"
+          >
+            <Mic className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Trending Topics */}
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <TrendingUp className="h-5 w-5 text-blue-400" />
+            <h2 className="text-lg font-semibold">Trending in Your Network</h2>
           </div>
           
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <Input
-              type="text"
-              placeholder={isListening ? "Listening..." : "Search posts, topics, or ask a question..."}
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              className={cn(
-                "pl-10 pr-12 h-12 bg-gray-100 dark:bg-gray-800 border-0 focus:bg-white dark:focus:bg-gray-700 transition-all duration-300",
-                isListening && "ring-2 ring-blue-500 ring-opacity-50"
-              )}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleVoiceToggle}
-              className={cn(
-                "absolute right-2 top-1/2 transform -translate-y-1/2 p-2",
-                isVoiceMode && "text-blue-500",
-                isListening && "animate-pulse"
-              )}
-            >
-              {isVoiceMode || isListening ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
-            </Button>
+          <div className="grid grid-cols-2 gap-3">
+            {trendingTopics.map((topic) => (
+              <Card key={topic.name} className="bg-slate-800/30 border-slate-700 hover:bg-slate-800/50 transition-colors cursor-pointer">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className={`w-3 h-3 rounded-full ${topic.color}`} />
+                    <Badge variant="secondary" className="bg-slate-700/50 text-slate-300 text-xs">
+                      {topic.count}
+                    </Badge>
+                  </div>
+                  <h3 className="font-medium text-white text-sm">{topic.name}</h3>
+                  <p className="text-xs text-slate-400 mt-1">posts this week</p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
+        </div>
+
+        {/* Recent Posts Feed */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Recent from Your Network</h2>
           
-          {/* Search Results Info */}
-          {searchQuery && (
-            <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-              {displayPosts.length} post{displayPosts.length !== 1 ? 's' : ''} found
-              {chatMutation.isPending && (
-                <span className="ml-2 text-blue-600 dark:text-blue-400">• AI processing...</span>
-              )}
+          {isLoading ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => (
+                <Card key={i} className="bg-slate-800/30 border-slate-700 animate-pulse">
+                  <CardContent className="p-4">
+                    <div className="flex space-x-3">
+                      <div className="w-10 h-10 bg-slate-700 rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-slate-700 rounded w-1/3" />
+                        <div className="h-3 bg-slate-700 rounded w-full" />
+                        <div className="h-3 bg-slate-700 rounded w-2/3" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          )}
-          
-          {/* AI Response */}
-          {aiResponse && (
-            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <div className="flex items-start space-x-2">
-                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-white text-xs font-bold">AI</span>
+          ) : posts.length > 0 ? (
+            <div className="space-y-3">
+              {posts.slice(0, 5).map((post) => (
+                <Card key={post.id} className="bg-slate-800/30 border-slate-700 hover:bg-slate-800/50 transition-colors">
+                  <CardContent className="p-4">
+                    <div className="flex space-x-3">
+                      <Avatar className="w-10 h-10">
+                        <AvatarImage src={post.author_avatar} />
+                        <AvatarFallback className="bg-slate-600 text-white text-sm">
+                          {post.author_name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <span className="font-medium text-white text-sm">
+                            {post.author_name}
+                          </span>
+                          <span className="text-slate-400 text-sm">
+                            @{post.author_username}
+                          </span>
+                          <span className="text-slate-500 text-xs">
+                            {new Date(post.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+
+                        <p className="text-slate-200 text-sm mb-2 line-clamp-3">
+                          {post.content}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card className="bg-slate-800/30 border-slate-700">
+              <CardContent className="p-8 text-center">
+                <div className="text-slate-400">
+                  <Search className="h-12 w-12 mx-auto mb-3" />
+                  <p className="mb-2">No posts yet</p>
+                  <p className="text-sm text-slate-500">Start following accounts to see posts here</p>
                 </div>
-                <p className="text-sm text-blue-900 dark:text-blue-100">{aiResponse}</p>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>
 
-      {/* Feed */}
-      <ScrollArea className="flex-1" ref={scrollAreaRef}>
-        <div className="animate-fade-in">
-          {isLoadingPosts ? (
-            <div className="flex items-center justify-center py-16">
-              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-          ) : displayPosts.length > 0 ? (
-            displayPosts.map((post) => (
-              <PostCard key={post.id} post={post} />
-            ))
-          ) : (
-            <div className="flex flex-col items-center justify-center py-16 px-4">
-              <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
-                <Search className="w-8 h-8 text-gray-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                {searchQuery ? 'No posts found' : 'No posts yet'}
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 text-center">
-                {searchQuery 
-                  ? 'Try searching for different keywords or topics'
-                  : 'Start by saving some posts from X to see them here'
-                }
-              </p>
-            </div>
-          )}
-        </div>
-      </ScrollArea>
-
-      {/* Loading indicator for voice */}
-      {isListening && (
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg animate-pulse">
-          <div className="flex items-center space-x-2">
-            <Mic className="w-4 h-4" />
-            <span className="text-sm">Listening...</span>
-          </div>
-        </div>
+      {/* Voice Search Modal */}
+      {showVoiceSearch && (
+        <VoiceSearch
+          onResult={handleVoiceResult}
+          onClose={() => setShowVoiceSearch(false)}
+        />
       )}
     </div>
   );

@@ -1,194 +1,215 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Mic, RefreshCw, User, Users } from 'lucide-react';
+import { Search, Mic, RotateCcw, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { useTopics } from '@/hooks/useTopics';
-import { usePosts } from '@/hooks/usePosts';
+import { Badge } from '@/components/ui/badge';
+import { VoiceSearch } from '@/components/explore/VoiceSearch';
 import { TopicDot } from '@/components/explore/TopicDot';
 import { PostPanel } from '@/components/explore/PostPanel';
-import { VoiceSearch } from '@/components/explore/VoiceSearch';
+import { useTopics } from '@/hooks/useTopics';
+import { usePosts } from '@/hooks/usePosts';
+
+interface Topic {
+  id: string;
+  name: string;
+  color: string;
+  description?: string;
+  post_count: number;
+}
+
+interface Post {
+  id: string;
+  content: string;
+  author_name: string;
+  author_username: string;
+  author_avatar?: string;
+  created_at: string;
+  likes_count: number;
+  retweets_count: number;
+  replies_count: number;
+  x_url?: string;
+}
 
 const Explore = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showOwnPosts, setShowOwnPosts] = useState(true);
-  const [selectedTopics, setSelectedTopics] = useState<any[]>([]);
-  const [selectedPost, setSelectedPost] = useState<any>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { topics, isLoading: topicsLoading, refetch: refetchTopics } = useTopics();
+  const { searchQuery, setSearchQuery } = usePosts();
   const [showVoiceSearch, setShowVoiceSearch] = useState(false);
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+  const [showPostPanel, setShowPostPanel] = useState(false);
+  const [showOwnPosts, setShowOwnPosts] = useState(true);
+  const [centralTopics, setCentralTopics] = useState<Topic[]>([]);
 
-  const { topics, isLoading: topicsLoading } = useTopics();
-  const { searchResults, isSearching, searchQuery: currentSearch, setSearchQuery: updateSearch, chatMutation } = usePosts();
-
-  // Get 4 random topics for the iPod interface
-  const getRandomTopics = () => {
-    if (!topics.length) return [];
-    const shuffled = [...topics].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, 4);
-  };
-
-  const refreshTopics = async () => {
-    setIsRefreshing(true);
-    // Simulate refresh animation
-    await new Promise(resolve => setTimeout(resolve, 800));
-    setSelectedTopics(getRandomTopics());
-    setIsRefreshing(false);
-  };
-
+  // Generate 4 random topics for the iPod interface
   useEffect(() => {
-    if (topics.length > 0 && selectedTopics.length === 0) {
-      setSelectedTopics(getRandomTopics());
+    if (topics && topics.length > 0) {
+      const shuffled = [...topics].sort(() => 0.5 - Math.random());
+      setCentralTopics(shuffled.slice(0, 4));
     }
   }, [topics]);
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    updateSearch(query);
-  };
-
-  const handleVoiceSearch = (transcript: string) => {
-    handleSearch(transcript);
-    setShowVoiceSearch(false);
-  };
-
-  const handleTopicClick = async (topic: any) => {
-    // Simulate getting posts for this topic
-    try {
-      const response = await chatMutation.mutateAsync(`Show me posts about ${topic.name}`);
-      // For now, we'll just search for the topic name
-      handleSearch(topic.name);
-    } catch (error) {
-      console.error('Error fetching topic posts:', error);
-      handleSearch(topic.name);
+  const handleRefresh = () => {
+    refetchTopics();
+    if (topics && topics.length > 0) {
+      const shuffled = [...topics].sort(() => 0.5 - Math.random());
+      setCentralTopics(shuffled.slice(0, 4));
     }
   };
 
+  const handleTopicClick = (topic: Topic) => {
+    setSelectedTopic(topic);
+    setShowPostPanel(true);
+  };
+
+  const handleVoiceResult = (transcript: string) => {
+    setSearchQuery(transcript);
+    setShowVoiceSearch(false);
+  };
+
+  const handleClosePanel = () => {
+    setShowPostPanel(false);
+    setSelectedTopic(null);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white">
-      {/* Header with Search */}
-      <div className="p-6 pb-4">
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
+    <div className="min-h-screen bg-slate-950 text-white">
+      {/* Header */}
+      <div className="sticky top-0 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 z-20">
+        <div className="flex items-center justify-between p-4">
+          <h1 className="text-2xl font-bold">Explore</h1>
+          <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white">
+            <Settings className="h-5 w-5" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="p-4 space-y-8">
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-5 w-5" />
           <Input
+            placeholder="Search topics or ask anything..."
             value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Search posts, topics, or ask anything..."
-            className="pl-10 pr-12 py-3 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-400 focus:border-blue-500 rounded-xl"
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 pr-12 bg-slate-800/50 border-slate-700 text-white placeholder-slate-400 focus:border-blue-500 h-12"
           />
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setShowVoiceSearch(true)}
-            className="absolute right-2 top-2 text-slate-400 hover:text-white"
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white"
           >
             <Mic className="h-4 w-4" />
           </Button>
         </div>
 
-        {/* Own/Others Toggle */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center space-x-3">
-            <User className="h-5 w-5 text-slate-400" />
-            <Label htmlFor="post-toggle" className="text-sm font-medium">
-              {showOwnPosts ? 'Your Posts' : 'All Posts'}
-            </Label>
-            <Switch
-              id="post-toggle"
-              checked={!showOwnPosts}
-              onCheckedChange={(checked) => setShowOwnPosts(!checked)}
-            />
-            <Users className="h-5 w-5 text-slate-400" />
+        {/* Toggle */}
+        <div className="flex items-center justify-center">
+          <div className="bg-slate-800/50 rounded-full p-1 flex">
+            <Button
+              variant={showOwnPosts ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setShowOwnPosts(true)}
+              className={`rounded-full px-6 ${
+                showOwnPosts 
+                  ? 'bg-blue-500 text-white hover:bg-blue-600' 
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700'
+              }`}
+            >
+              My Posts
+            </Button>
+            <Button
+              variant={!showOwnPosts ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setShowOwnPosts(false)}
+              className={`rounded-full px-6 ${
+                !showOwnPosts 
+                  ? 'bg-blue-500 text-white hover:bg-blue-600' 
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700'
+              }`}
+            >
+              All Posts
+            </Button>
           </div>
         </div>
-      </div>
 
-      {/* iPod Interface */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-32">
-        <div className="relative w-80 h-80 flex items-center justify-center">
-          {/* Central Refresh Dot */}
-          <Button
-            onClick={refreshTopics}
-            disabled={isRefreshing}
-            className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-4 border-white/20 shadow-2xl transition-all duration-300 hover:scale-110 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-8 w-8 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </Button>
+        {/* iPod-style Interface */}
+        <div className="flex flex-col items-center justify-center min-h-[400px] space-y-8">
+          {/* Topic Dots arranged around center */}
+          <div className="relative w-80 h-80">
+            {/* Central Refresh Button */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+              <Button
+                onClick={handleRefresh}
+                disabled={topicsLoading}
+                className="w-20 h-20 rounded-full bg-slate-700 hover:bg-slate-600 border-2 border-slate-600 transition-all duration-300 hover:scale-105"
+              >
+                <RotateCcw className={`h-8 w-8 text-white ${topicsLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
 
-          {/* Four Topic Dots */}
-          {selectedTopics.map((topic, index) => {
-            const positions = [
-              { top: '10%', left: '50%', transform: 'translateX(-50%)' }, // Top
-              { top: '50%', right: '10%', transform: 'translateY(-50%)' }, // Right
-              { bottom: '10%', left: '50%', transform: 'translateX(-50%)' }, // Bottom
-              { top: '50%', left: '10%', transform: 'translateY(-50%)' }, // Left
-            ];
+            {/* Topic Dots positioned around the center */}
+            {centralTopics.map((topic, index) => {
+              const positions = [
+                { top: '10%', left: '50%', transform: 'translateX(-50%)' }, // Top
+                { top: '50%', right: '10%', transform: 'translateY(-50%)' }, // Right
+                { bottom: '10%', left: '50%', transform: 'translateX(-50%)' }, // Bottom
+                { top: '50%', left: '10%', transform: 'translateY(-50%)' } // Left
+              ];
 
-            return (
-              <TopicDot
-                key={`${topic.id}-${index}`}
-                topic={topic}
-                position={positions[index]}
-                onClick={() => handleTopicClick(topic)}
-                isRefreshing={isRefreshing}
-                delay={index * 100}
-              />
-            );
-          })}
+              return (
+                <div
+                  key={topic.id}
+                  className="absolute"
+                  style={positions[index]}
+                >
+                  <TopicDot
+                    topic={topic}
+                    onClick={() => handleTopicClick(topic)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Instructions */}
+          <div className="text-center space-y-2">
+            <p className="text-slate-400 text-sm">
+              Tap the center to refresh topics
+            </p>
+            <p className="text-slate-500 text-xs">
+              Select a topic to explore posts
+            </p>
+          </div>
         </div>
 
-        {/* Loading State */}
-        {(topicsLoading || isSearching) && (
-          <div className="mt-8 text-center">
-            <div className="inline-flex items-center space-x-2 text-slate-400">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse delay-100"></div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse delay-200"></div>
-              <span className="ml-2">Loading...</span>
+        {/* Recent Activity */}
+        {searchQuery && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Search Results</h3>
+              <Badge variant="secondary" className="bg-blue-500/20 text-blue-400">
+                "{searchQuery}"
+              </Badge>
             </div>
           </div>
         )}
       </div>
 
-      {/* Search Results Preview */}
-      {searchResults.length > 0 && (
-        <div className="px-6 pb-4">
-          <h3 className="text-lg font-semibold mb-3">Search Results</h3>
-          <div className="space-y-2 max-h-32 overflow-y-auto">
-            {searchResults.slice(0, 3).map((post) => (
-              <Card
-                key={post.id}
-                className="p-3 bg-slate-800/50 border-slate-700 cursor-pointer hover:bg-slate-700/50 transition-colors"
-                onClick={() => setSelectedPost(post)}
-              >
-                <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex-shrink-0"></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white">{post.author_name}</p>
-                    <p className="text-xs text-slate-400 truncate">{post.content}</p>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
+      {/* Post Panel */}
+      {showPostPanel && selectedTopic && (
+        <PostPanel
+          topic={selectedTopic}
+          showOwnPosts={showOwnPosts}
+          onClose={handleClosePanel}
+        />
       )}
 
       {/* Voice Search Modal */}
       {showVoiceSearch && (
         <VoiceSearch
-          onResult={handleVoiceSearch}
+          onResult={handleVoiceResult}
           onClose={() => setShowVoiceSearch(false)}
-        />
-      )}
-
-      {/* Post Panel */}
-      {selectedPost && (
-        <PostPanel
-          post={selectedPost}
-          onClose={() => setSelectedPost(null)}
         />
       )}
     </div>
