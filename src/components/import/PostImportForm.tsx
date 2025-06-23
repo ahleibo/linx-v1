@@ -5,7 +5,12 @@ import { PostPreviewSection } from './PostPreviewSection';
 import { ImportActions } from './ImportActions';
 import { type EnhancedXPostData } from '@/types/twitter';
 
-export const PostImportForm = () => {
+interface PostImportFormProps {
+  onSuccess?: () => void;
+  onCancel?: () => void;
+}
+
+export const PostImportForm = ({ onSuccess, onCancel }: PostImportFormProps) => {
   const [posts, setPosts] = useState<EnhancedXPostData[]>([]);
   const [isImporting, setIsImporting] = useState(false);
 
@@ -38,6 +43,7 @@ export const PostImportForm = () => {
     try {
       // Import logic will be handled by ImportActions component
       console.log('Importing posts:', posts);
+      onSuccess?.();
     } catch (error) {
       console.error('Import failed:', error);
     } finally {
@@ -59,10 +65,10 @@ export const PostImportForm = () => {
       
       {posts.length > 0 && (
         <ImportActions
-          posts={posts}
-          onClearAll={handleClearAll}
-          onImportComplete={() => setPosts([])}
-          disabled={isImporting}
+          isLoading={isImporting}
+          postsCount={posts.length}
+          onImport={handleImport}
+          onCancel={onCancel}
         />
       )}
     </div>

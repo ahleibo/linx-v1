@@ -69,7 +69,26 @@ export class TwitterApiService {
       
       // Fallback to existing XPostFetcher for basic data
       const { XPostFetcher } = await import('./xPostFetcher');
-      return await XPostFetcher.fetchPostData(url);
+      const fallbackData = await XPostFetcher.fetchPostData(url);
+      
+      if (fallbackData) {
+        // Transform XPostData to EnhancedXPostData with required id field
+        return {
+          id: parsed.tweetId,
+          url: fallbackData.url,
+          content: fallbackData.content,
+          authorName: fallbackData.authorName,
+          authorUsername: fallbackData.authorUsername,
+          authorAvatar: fallbackData.authorAvatar,
+          mediaUrls: fallbackData.mediaUrls || [],
+          likesCount: fallbackData.likesCount || 0,
+          retweetsCount: fallbackData.retweetsCount || 0,
+          repliesCount: fallbackData.repliesCount || 0,
+          createdAt: fallbackData.createdAt,
+        };
+      }
+      
+      return null;
     }
   }
 
