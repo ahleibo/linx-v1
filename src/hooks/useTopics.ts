@@ -6,7 +6,8 @@ export function useTopics() {
   const {
     data: topics = [],
     isLoading,
-    error
+    error,
+    refetch
   } = useQuery({
     queryKey: ['topics'],
     queryFn: postService.getTopics,
@@ -28,6 +29,7 @@ export function useTopics() {
     topics,
     isLoading,
     error,
+    refetch,
     getTopicById,
     getPostsByTopic
   };

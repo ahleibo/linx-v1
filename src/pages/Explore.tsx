@@ -15,20 +15,6 @@ interface Topic {
   name: string;
   color: string;
   description?: string;
-  post_count: number;
-}
-
-interface Post {
-  id: string;
-  content: string;
-  author_name: string;
-  author_username: string;
-  author_avatar?: string;
-  created_at: string;
-  likes_count: number;
-  retweets_count: number;
-  replies_count: number;
-  x_url?: string;
 }
 
 const Explore = () => {

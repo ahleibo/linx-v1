@@ -1,114 +1,118 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/hooks/useAuth';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Search, Hash, User } from 'lucide-react';
+import { BookOpen, Search, User, Sparkles } from 'lucide-react';
 
 const Index = () => {
-  const { signIn } = useAuth();
   const navigate = useNavigate();
-
-  const handleSignIn = async (provider: 'google' | 'github') => {
-    try {
-      await signIn(provider);
-      navigate('/home');
-    } catch (error) {
-      console.error('Sign in error:', error);
-    }
-  };
-
-  const features = [
-    {
-      icon: <Search className="h-6 w-6" />,
-      title: "Smart Search",
-      description: "Find posts with AI-powered search and voice commands"
-    },
-    {
-      icon: <Hash className="h-6 w-6" />,
-      title: "Topic Clustering",
-      description: "Automatically organize posts by topics and themes"
-    },
-    {
-      icon: <User className="h-6 w-6" />,
-      title: "Personal Insights",
-      description: "Track your knowledge journey with detailed analytics"
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      {/* Header */}
-      <div className="border-b border-slate-800">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <Sparkles className="h-6 w-6 text-white" />
-              </div>
-              <h1 className="text-2xl font-bold">LiNX</h1>
+      {/* Hero Section */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-purple-600/5 to-transparent"></div>
+        <div className="relative px-4 py-20 mx-auto max-w-4xl text-center">
+          <div className="space-y-6">
+            <div className="inline-flex items-center px-4 py-2 bg-slate-800/50 rounded-full border border-slate-700">
+              <Sparkles className="h-4 w-4 mr-2 text-blue-400" />
+              <span className="text-sm text-slate-300">AI-Powered Knowledge Management</span>
+            </div>
+            
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
+              <span className="bg-gradient-to-r from-white via-slate-200 to-slate-300 bg-clip-text text-transparent">
+                LiNX
+              </span>
+            </h1>
+            
+            <p className="text-xl md:text-2xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+              Your personal knowledge companion. Save, organize, and explore your X posts with intelligent AI clustering.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
+              <Button 
+                onClick={() => navigate('/home')}
+                size="lg"
+                className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 text-lg font-semibold rounded-full transition-all duration-300 hover:scale-105"
+              >
+                Get Started
+              </Button>
+              <Button 
+                onClick={() => navigate('/explore')}
+                variant="outline"
+                size="lg"
+                className="border-slate-600 text-white hover:bg-slate-800 px-8 py-4 text-lg font-semibold rounded-full transition-all duration-300"
+              >
+                Explore Topics
+              </Button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Hero Section */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center max-w-4xl mx-auto">
-          <h2 className="text-5xl font-bold mb-6 bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent">
-            Your Personal Knowledge Universe
+      {/* Features Section */}
+      <div className="px-4 py-20 mx-auto max-w-6xl">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            <span className="bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+              Powerful Features
+            </span>
           </h2>
-          <p className="text-xl text-slate-300 mb-8 leading-relaxed">
-            Save, organize, and explore your X bookmarks with AI-powered insights. 
-            Transform scattered posts into structured knowledge.
+          <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+            Experience the future of personal knowledge management with our AI-driven platform.
           </p>
-          
-          <div className="space-y-4 max-w-sm mx-auto">
-            <Button 
-              onClick={() => handleSignIn('google')}
-              className="w-full bg-white text-slate-900 hover:bg-slate-100 font-semibold py-3 text-lg transition-all duration-200 hover:scale-105"
-            >
-              Continue with Google
-            </Button>
-            <Button 
-              onClick={() => handleSignIn('github')}
-              variant="outline"
-              className="w-full border-slate-600 text-white hover:bg-slate-800 font-semibold py-3 text-lg transition-all duration-200"
-            >
-              Continue with GitHub
-            </Button>
-          </div>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-8">
+          <Card className="bg-slate-800/30 border-slate-700 hover:bg-slate-800/50 transition-all duration-300">
+            <CardHeader>
+              <BookOpen className="h-8 w-8 text-blue-400 mb-4" />
+              <CardTitle className="text-white">Smart Organization</CardTitle>
+              <CardDescription className="text-slate-400">
+                AI automatically clusters your posts by topics, making it easy to find related content.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="bg-slate-800/30 border-slate-700 hover:bg-slate-800/50 transition-all duration-300">
+            <CardHeader>
+              <Search className="h-8 w-8 text-green-400 mb-4" />
+              <CardTitle className="text-white">Intelligent Search</CardTitle>
+              <CardDescription className="text-slate-400">
+                Natural language search and voice commands to find exactly what you're looking for.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="bg-slate-800/30 border-slate-700 hover:bg-slate-800/50 transition-all duration-300">
+            <CardHeader>
+              <User className="h-8 w-8 text-purple-400 mb-4" />
+              <CardTitle className="text-white">Personal Insights</CardTitle>
+              <CardDescription className="text-slate-400">
+                Get detailed analytics about your interests and discover patterns in your saved content.
+              </CardDescription>
+            </CardHeader>
+          </Card>
         </div>
       </div>
 
-      {/* Features Grid */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          {features.map((feature, index) => (
-            <Card key={index} className="bg-slate-800/30 border-slate-700 hover:bg-slate-800/50 transition-all duration-300 hover:scale-105">
-              <CardHeader className="text-center">
-                <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-4 text-blue-400">
-                  {feature.icon}
-                </div>
-                <CardTitle className="text-white text-xl">{feature.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-slate-300 text-center leading-relaxed">
-                  {feature.description}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="border-t border-slate-800 mt-16">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center text-slate-400">
-            <p>&copy; 2024 LiNX. Curating knowledge, one post at a time.</p>
-          </div>
+      {/* CTA Section */}
+      <div className="px-4 py-20 mx-auto max-w-4xl text-center">
+        <div className="bg-gradient-to-r from-slate-800/50 to-slate-700/50 rounded-2xl p-8 md:p-12 border border-slate-700">
+          <h3 className="text-3xl md:text-4xl font-bold mb-4 text-white">
+            Ready to organize your knowledge?
+          </h3>
+          <p className="text-slate-400 text-lg mb-8">
+            Join thousands of users who've transformed how they manage their digital knowledge.
+          </p>
+          <Button 
+            onClick={() => navigate('/home')}
+            size="lg"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 text-lg font-semibold rounded-full transition-all duration-300 hover:scale-105"
+          >
+            Start Your Journey
+          </Button>
         </div>
       </div>
     </div>

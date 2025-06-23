@@ -9,42 +9,16 @@ interface TopicDotProps {
     color: string;
     description?: string;
   };
-  position: {
-    top?: string;
-    bottom?: string;
-    left?: string;
-    right?: string;
-    transform?: string;
-  };
   onClick: () => void;
-  isRefreshing: boolean;
-  delay: number;
 }
 
-export const TopicDot: React.FC<TopicDotProps> = ({
-  topic,
-  position,
-  onClick,
-  isRefreshing,
-  delay
-}) => {
+export const TopicDot: React.FC<TopicDotProps> = ({ topic, onClick }) => {
   return (
-    <div
-      className="absolute"
-      style={position}
-    >
+    <div className="flex flex-col items-center">
       <Button
         onClick={onClick}
-        disabled={isRefreshing}
-        className={`
-          w-16 h-16 rounded-full transition-all duration-500 hover:scale-110 
-          shadow-lg border-2 border-white/10 backdrop-blur-sm
-          ${isRefreshing ? 'animate-pulse' : ''}
-        `}
-        style={{
-          backgroundColor: topic.color,
-          animationDelay: `${delay}ms`
-        }}
+        className="w-16 h-16 rounded-full transition-all duration-300 hover:scale-110 shadow-lg border-2 border-white/10 backdrop-blur-sm"
+        style={{ backgroundColor: topic.color }}
       >
         <div className="text-center">
           <div className="text-xs font-bold text-white truncate w-12">
@@ -54,7 +28,7 @@ export const TopicDot: React.FC<TopicDotProps> = ({
       </Button>
       
       {/* Topic Label */}
-      <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 text-xs text-slate-300 text-center whitespace-nowrap">
+      <div className="mt-2 text-xs text-slate-300 text-center whitespace-nowrap max-w-20 truncate">
         {topic.name}
       </div>
     </div>
