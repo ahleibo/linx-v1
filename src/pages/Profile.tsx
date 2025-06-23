@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Search, Mic, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -53,7 +54,7 @@ const Profile = () => {
 
       <div className="p-4 space-y-8">
         {/* User Info Section */}
-        <div className="flex flex-col items-center space-y-4">
+        <div className="flex flex-col items-start space-y-4">
           <div className="flex flex-row my-0">
             <Avatar className="w-24 h-24 border-4 border-slate-700">
               <AvatarImage src={user?.user_metadata?.avatar_url} />
@@ -62,7 +63,7 @@ const Profile = () => {
               </AvatarFallback>
             </Avatar>
             
-            <div className="flex flex-col justify-start items-center text-left space-y-1">
+            <div className="flex flex-col justify-start items-start text-left space-y-1">
               <h2 className="text-2xl font-bold">
                 {user?.user_metadata?.full_name || 'LiNX User'}
               </h2>
