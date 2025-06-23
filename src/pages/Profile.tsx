@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { VoiceSearch } from '@/components/explore/VoiceSearch';
+import { ImportDialog } from '@/components/import/ImportDialog';
 import { ProfileSettings } from '@/components/profile/ProfileSettings';
 import { useAuth } from '@/hooks/useAuth';
 import { usePosts } from '@/hooks/usePosts';
@@ -30,6 +31,10 @@ const Profile = () => {
     setShowVoiceSearch(false);
   };
 
+  const handleImportSuccess = () => {
+    window.location.reload();
+  };
+
   const getUserInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
@@ -40,7 +45,17 @@ const Profile = () => {
       <div className="sticky top-0 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 z-10">
         <div className="flex items-center justify-between p-4">
           <h1 className="text-2xl font-bold">Profile</h1>
-          <ProfileSettings />
+          <div className="flex items-center space-x-2">
+            <ImportDialog 
+              trigger={
+                <Button variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-700">
+                  Import Post
+                </Button>
+              }
+              onSuccess={handleImportSuccess} 
+            />
+            <ProfileSettings />
+          </div>
         </div>
       </div>
 

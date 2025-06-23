@@ -50,6 +50,27 @@ export const postService = {
     return data;
   },
 
+  // Get a single post with all its data
+  async getPostById(id: string) {
+    const { data, error } = await supabase
+      .from('posts')
+      .select(`
+        *,
+        post_topics (
+          topics (
+            id,
+            name,
+            color
+          )
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
   // Save a new post from X
   async savePost(postData: PostInsert) {
     const { data, error } = await supabase

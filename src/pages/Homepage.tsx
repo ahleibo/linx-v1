@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { VoiceSearch } from '@/components/explore/VoiceSearch';
+import { ImportDialog } from '@/components/import/ImportDialog';
+import { TweetCard } from '@/components/posts/TweetCard';
 import { usePosts } from '@/hooks/usePosts';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -18,6 +20,10 @@ const Homepage = () => {
   const handleVoiceResult = (transcript: string) => {
     setSearchQuery(transcript);
     setShowVoiceSearch(false);
+  };
+
+  const handleImportSuccess = () => {
+    window.location.reload();
   };
 
   // Mock trending topics for demo
@@ -39,6 +45,7 @@ const Homepage = () => {
               {user?.user_metadata?.full_name || 'Explorer'}
             </p>
           </div>
+          <ImportDialog onSuccess={handleImportSuccess} />
         </div>
       </div>
 
@@ -111,56 +118,26 @@ const Homepage = () => {
           ) : posts.length > 0 ? (
             <div className="space-y-3">
               {posts.slice(0, 5).map((post) => (
-                <Card key={post.id} className="bg-slate-800/30 border-slate-700 hover:bg-slate-800/50 transition-colors">
-                  <CardContent className="p-4">
-                    <div className="flex space-x-3">
-                      <Avatar className="w-10 h-10">
-                        <AvatarImage src={post.author_avatar} />
-                        <AvatarFallback className="bg-slate-600 text-white text-sm">
-                          {post.author_name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <span className="font-medium text-white text-sm">
-                            {post.author_name}
-                          </span>
-                          <span className="text-slate-400 text-sm">
-                            @{post.author_username}
-                          </span>
-                          <span className="text-slate-500 text-xs">
-                            {new Date(post.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-
-                        <p className="text-slate-200 text-sm mb-2 line-clamp-3">
-                          {post.content}
-                        </p>
-
-                        {post.x_url && (
-                          <a
-                            href={post.x_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-400 text-xs hover:underline"
-                          >
-                            View original post
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <TweetCard key={post.id} post={post} />
               ))}
             </div>
           ) : (
             <Card className="bg-slate-800/30 border-slate-700">
               <CardContent className="p-8 text-center">
-                <div className="text-slate-400">
+                <div className="text-slate-400 space-y-4">
                   <Search className="h-12 w-12 mx-auto mb-3" />
-                  <p className="mb-2">No posts yet</p>
-                  <p className="text-sm text-slate-500">Start exploring to discover content</p>
+                  <div>
+                    <p className="mb-2">No posts yet</p>
+                    <p className="text-sm text-slate-500 mb-4">Import your first X post to get started</p>
+                    <ImportDialog
+                      trigger={
+                        <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700">
+                          Import Your First Post
+                        </Button>
+                      }
+                      onSuccess={handleImportSuccess}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
