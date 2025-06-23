@@ -10,54 +10,6 @@ declare global {
     SpeechRecognition: typeof SpeechRecognition;
     webkitSpeechRecognition: typeof SpeechRecognition;
   }
-  
-  interface SpeechRecognition extends EventTarget {
-    continuous: boolean;
-    interimResults: boolean;
-    lang: string;
-    onstart: () => void;
-    onresult: (event: SpeechRecognitionEvent) => void;
-    onerror: (event: SpeechRecognitionErrorEvent) => void;
-    onend: () => void;
-    start(): void;
-    stop(): void;
-  }
-  
-  interface SpeechRecognitionEvent {
-    resultIndex: number;
-    results: SpeechRecognitionResultList;
-  }
-  
-  interface SpeechRecognitionResultList {
-    [index: number]: SpeechRecognitionResult;
-    length: number;
-  }
-  
-  interface SpeechRecognitionResult {
-    [index: number]: SpeechRecognitionAlternative;
-    isFinal: boolean;
-    length: number;
-  }
-  
-  interface SpeechRecognitionAlternative {
-    transcript: string;
-    confidence: number;
-  }
-  
-  interface SpeechRecognitionErrorEvent {
-    error: string;
-    message: string;
-  }
-  
-  var SpeechRecognition: {
-    prototype: SpeechRecognition;
-    new(): SpeechRecognition;
-  };
-  
-  var webkitSpeechRecognition: {
-    prototype: SpeechRecognition;
-    new(): SpeechRecognition;
-  };
 }
 
 interface VoiceSearchProps {
@@ -73,7 +25,7 @@ export const VoiceSearch: React.FC<VoiceSearchProps> = ({ onResult, onClose }) =
   useEffect(() => {
     // Check if speech recognition is supported
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      const SpeechRecognitionConstructor = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechRecognitionConstructor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       const recognitionInstance = new SpeechRecognitionConstructor();
       
       recognitionInstance.continuous = false;
@@ -84,7 +36,7 @@ export const VoiceSearch: React.FC<VoiceSearchProps> = ({ onResult, onClose }) =
         setIsListening(true);
       };
 
-      recognitionInstance.onresult = (event) => {
+      recognitionInstance.onresult = (event: any) => {
         const current = event.resultIndex;
         const transcriptResult = event.results[current][0].transcript;
         setTranscript(transcriptResult);
@@ -94,7 +46,7 @@ export const VoiceSearch: React.FC<VoiceSearchProps> = ({ onResult, onClose }) =
         }
       };
 
-      recognitionInstance.onerror = (event) => {
+      recognitionInstance.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         setIsListening(false);
       };
