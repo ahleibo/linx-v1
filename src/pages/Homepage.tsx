@@ -1,12 +1,13 @@
 
 import React, { useState } from 'react';
-import { Search, Mic, Plus, TrendingUp } from 'lucide-react';
+import { Search, Mic, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { VoiceSearch } from '@/components/explore/VoiceSearch';
+import { ImportPostsDialog } from '@/components/import/ImportPostsDialog';
 import { usePosts } from '@/hooks/usePosts';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -18,6 +19,11 @@ const Homepage = () => {
   const handleVoiceResult = (transcript: string) => {
     setSearchQuery(transcript);
     setShowVoiceSearch(false);
+  };
+
+  const handleImportSuccess = () => {
+    // The usePosts hook will automatically refetch data when posts are added
+    window.location.reload(); // Simple refresh to show new posts
   };
 
   // Mock trending topics for demo
@@ -39,12 +45,7 @@ const Homepage = () => {
               {user?.user_metadata?.full_name || 'Explorer'}
             </p>
           </div>
-          <Button 
-            size="icon" 
-            className="bg-blue-500 hover:bg-blue-600 text-white"
-          >
-            <Plus className="h-5 w-5" />
-          </Button>
+          <ImportPostsDialog onSuccess={handleImportSuccess} />
         </div>
       </div>
 
@@ -143,6 +144,17 @@ const Homepage = () => {
                         <p className="text-slate-200 text-sm mb-2 line-clamp-3">
                           {post.content}
                         </p>
+
+                        {post.x_url && (
+                          <a
+                            href={post.x_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-400 text-xs hover:underline"
+                          >
+                            View original post
+                          </a>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -155,7 +167,8 @@ const Homepage = () => {
                 <div className="text-slate-400">
                   <Search className="h-12 w-12 mx-auto mb-3" />
                   <p className="mb-2">No posts yet</p>
-                  <p className="text-sm text-slate-500">Start following accounts to see posts here</p>
+                  <p className="text-sm text-slate-500 mb-4">Import your X posts to get started</p>
+                  <ImportPostsDialog onSuccess={handleImportSuccess} />
                 </div>
               </CardContent>
             </Card>

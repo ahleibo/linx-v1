@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { VoiceSearch } from '@/components/explore/VoiceSearch';
+import { ImportPostsDialog } from '@/components/import/ImportPostsDialog';
 import { useAuth } from '@/hooks/useAuth';
 import { usePosts } from '@/hooks/usePosts';
 import { useProfileStats } from '@/hooks/useProfileStats';
@@ -25,6 +25,11 @@ const Profile = () => {
     setShowVoiceSearch(false);
   };
 
+  const handleImportSuccess = () => {
+    // Refresh the page to show new posts and updated stats
+    window.location.reload();
+  };
+
   const getUserInitials = (name: string) => {
     return name
       .split(' ')
@@ -40,9 +45,12 @@ const Profile = () => {
       <div className="sticky top-0 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 z-10">
         <div className="flex items-center justify-between p-4">
           <h1 className="text-2xl font-bold">Profile</h1>
-          <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white">
-            <Settings className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center space-x-2">
+            <ImportPostsDialog onSuccess={handleImportSuccess} />
+            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white">
+              <Settings className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </div>
 
