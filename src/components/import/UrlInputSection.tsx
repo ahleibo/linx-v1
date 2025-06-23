@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Link } from 'lucide-react';
+import { Loader2, Link, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { XPostFetcher } from '@/services/xPostFetcher';
 import { type XPostData } from '@/services/postImportService';
@@ -16,29 +16,48 @@ export const UrlInputSection = ({ onPostFetched }: UrlInputSectionProps) => {
   const { toast } = useToast();
   const [isFetching, setIsFetching] = useState(false);
   const [urlInput, setUrlInput] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const validateUrl = (url: string): boolean => {
+    const cleanUrl = url.trim();
+    const patterns = [
+      /^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/\w+\/status\/\d+/i,
+      /^(?:x|twitter)\.com\/\w+\/status\/\d+/i,
+      /^www\.(?:x|twitter)\.com\/\w+\/status\/\d+/i
+    ];
+    
+    return patterns.some(pattern => pattern.test(cleanUrl));
+  };
 
   const handleFetchPost = async () => {
+    setError(null);
+    
     if (!urlInput.trim()) {
-      toast({
-        title: "URL required",
-        description: "Please enter a valid X post URL.",
-        variant: "destructive"
-      });
+      setError("Please enter a valid X post URL.");
+      return;
+    }
+
+    if (!validateUrl(urlInput.trim())) {
+      setError("Please enter a valid X/Twitter post URL (e.g., https://x.com/username/status/123456789)");
       return;
     }
 
     setIsFetching(true);
+    
     try {
+      console.log('Attempting to fetch post from URL:', urlInput.trim());
       const postData = await XPostFetcher.fetchPostData(urlInput.trim());
       
       if (postData) {
         onPostFetched(postData);
         setUrlInput('');
+        setError(null);
         toast({
           title: "Post fetched successfully",
           description: "Review the post below and click Import to save it."
         });
       } else {
+        setError("Unable to fetch post data. Please check the URL and try again.");
         toast({
           title: "Unable to fetch post",
           description: "Please check the URL and try again.",
@@ -46,6 +65,8 @@ export const UrlInputSection = ({ onPostFetched }: UrlInputSectionProps) => {
         });
       }
     } catch (error) {
+      console.error('Error fetching post:', error);
+      setError("Failed to fetch post data. Please try again.");
       toast({
         title: "Error fetching post",
         description: "Failed to fetch post data. Please try again.",
@@ -64,9 +85,15 @@ export const UrlInputSection = ({ onPostFetched }: UrlInputSectionProps) => {
           <Input
             placeholder="https://x.com/username/status/123456789"
             value={urlInput}
-            onChange={(e) => setUrlInput(e.target.value)}
-            className="bg-slate-700/50 border-slate-600 text-white flex-1"
-            onKeyPress={(e) => e.key === 'Enter' && handleFetchPost()}
+            onChange={(e) => {
+              setUrlInput(e.target.value);
+              setError(null);
+            }}
+            className={`bg-slate-700/50 border-slate-600 text-white flex-1 ${
+              error ? 'border-red-500' : ''
+            }`}
+            onKeyPress={(e) => e.key === 'Enter' && !isFetching && handleFetchPost()}
+            disabled={isFetching}
           />
           <Button
             type="button"
@@ -81,8 +108,17 @@ export const UrlInputSection = ({ onPostFetched }: UrlInputSectionProps) => {
             )}
           </Button>
         </div>
+        
+        {error && (
+          <div className="flex items-center space-x-2 text-red-400 text-sm">
+            <AlertCircle className="h-4 w-4" />
+            <span>{error}</span>
+          </div>
+        )}
+        
         <p className="text-sm text-slate-400">
-          Paste an X (Twitter) post URL to automatically fetch all post data
+          Paste an X (Twitter) post URL to automatically fetch all post data. 
+          Supports x.com and twitter.com URLs.
         </p>
       </div>
     </div>
