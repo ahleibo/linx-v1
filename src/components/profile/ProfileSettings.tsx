@@ -24,11 +24,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
 export const ProfileSettings = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -79,6 +81,7 @@ export const ProfileSettings = () => {
 
   const handleLogout = async () => {
     await signOut();
+    navigate('/');
   };
 
   return (
