@@ -23,7 +23,7 @@ export class XPostFetcher {
     return null;
   }
 
-  // Fetch post data from X/Twitter URL - works with minimal info
+  // Fetch post data from X/Twitter URL
   static async fetchPostData(url: string): Promise<XPostData | null> {
     console.log('Fetching post data for URL:', url);
     
@@ -36,34 +36,39 @@ export class XPostFetcher {
     console.log('Parsed URL data:', parsed);
 
     try {
-      // Try Twitter's oEmbed API first
+      // Try Twitter's oEmbed API first - this often has the actual content
       const result = await this.fetchViaOEmbed(url, parsed);
-      if (result) {
+      if (result && result.content && !result.content.startsWith('Post from @')) {
         console.log('Successfully fetched tweet data via oEmbed:', result);
         return result;
       }
 
       // Try fetching via proxy
       const proxyResult = await this.fetchViaProxy(url, parsed);
-      if (proxyResult) {
+      if (proxyResult && proxyResult.content && !proxyResult.content.startsWith('Post from @')) {
         console.log('Successfully fetched tweet data via proxy:', proxyResult);
         return proxyResult;
       }
 
       // Try meta extraction service
       const metaResult = await this.fetchViaMetaTags(url, parsed);
-      if (metaResult) {
+      if (metaResult && metaResult.content && !metaResult.content.startsWith('Post from @')) {
         console.log('Successfully fetched tweet data via meta tags:', metaResult);
         return metaResult;
       }
 
-      // If all else fails, create a basic post with minimal info
+      // If we got results but they're generic, try to improve them
+      const bestResult = result || proxyResult || metaResult;
+      if (bestResult) {
+        return bestResult;
+      }
+
+      // Last resort - create basic post
       console.log('Creating basic post with minimal available info');
       return this.createBasicPost(url, parsed);
 
     } catch (error) {
       console.error('Error fetching post:', error);
-      // Fallback to basic post even on error
       return this.createBasicPost(url, parsed);
     }
   }
@@ -95,23 +100,26 @@ export class XPostFetcher {
         console.log('oEmbed response:', data);
         
         if (data.html) {
-          const tempDiv = document.createElement('div');
-          tempDiv.innerHTML = data.html;
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(data.html, 'text/html');
           
-          const tweetText = this.extractTweetTextFromHTML(tempDiv);
+          // Extract tweet text from the HTML
+          const tweetText = this.extractTweetTextFromHTML(doc.body);
           
-          return {
-            url,
-            content: tweetText || `Post from @${parsed.username}`,
-            authorName: data.author_name || parsed.username,
-            authorUsername: parsed.username,
-            authorAvatar: `https://unavatar.io/x/${parsed.username}`,
-            mediaUrls: [],
-            likesCount: 0,
-            retweetsCount: 0,
-            repliesCount: 0,
-            createdAt: new Date().toISOString()
-          };
+          if (tweetText) {
+            return {
+              url,
+              content: tweetText,
+              authorName: data.author_name || parsed.username,
+              authorUsername: parsed.username,
+              authorAvatar: `https://unavatar.io/x/${parsed.username}`,
+              mediaUrls: [],
+              likesCount: 0,
+              retweetsCount: 0,
+              repliesCount: 0,
+              createdAt: new Date().toISOString()
+            };
+          }
         }
       }
     } catch (error) {
@@ -121,6 +129,7 @@ export class XPostFetcher {
   }
 
   private static extractTweetTextFromHTML(element: HTMLElement): string {
+    // Look for tweet text in various selectors
     const selectors = [
       'p',
       '.tweet-text',
@@ -131,12 +140,12 @@ export class XPostFetcher {
 
     for (const selector of selectors) {
       const textElement = element.querySelector(selector);
-      if (textElement) {
-        // Fix TypeScript error by using textContent which exists on Element
-        let text = textElement.textContent || '';
+      if (textElement && textElement.textContent) {
+        let text = textElement.textContent.trim();
         text = this.cleanExtractedText(text);
         
-        if (text && text.length > 10) {
+        // Make sure it's not just metadata or empty
+        if (text && text.length > 10 && !text.includes('http://') && !text.includes('pic.twitter.com')) {
           return text;
         }
       }
@@ -170,21 +179,25 @@ export class XPostFetcher {
       const response = await fetch(metaUrl);
       const data = await response.json();
       
-      if (data.description) {
+      if (data.description && data.description.trim()) {
+        const cleanDescription = this.cleanExtractedText(data.description);
         const authorName = this.extractAuthorFromTitle(data.title || '', parsed.username);
         
-        return {
-          url,
-          content: this.cleanExtractedText(data.description),
-          authorName,
-          authorUsername: parsed.username,
-          authorAvatar: `https://unavatar.io/x/${parsed.username}`,
-          mediaUrls: data.images && data.images.length > 0 ? [data.images[0]] : [],
-          likesCount: 0,
-          retweetsCount: 0,
-          repliesCount: 0,
-          createdAt: new Date().toISOString()
-        };
+        // Only return if we have meaningful content
+        if (cleanDescription && cleanDescription.length > 10) {
+          return {
+            url,
+            content: cleanDescription,
+            authorName,
+            authorUsername: parsed.username,
+            authorAvatar: `https://unavatar.io/x/${parsed.username}`,
+            mediaUrls: data.images && data.images.length > 0 ? [data.images[0]] : [],
+            likesCount: 0,
+            retweetsCount: 0,
+            repliesCount: 0,
+            createdAt: new Date().toISOString()
+          };
+        }
       }
     } catch (error) {
       console.warn('Meta tags fetch failed:', error);
@@ -194,6 +207,7 @@ export class XPostFetcher {
 
   private static extractFromHTML(html: string, parsed: { username: string; postId: string }, url: string): XPostData | null {
     try {
+      // Look for Twitter/X meta tags that contain the actual tweet content
       const contentPatterns = [
         /<meta property="twitter:description" content="([^"]*)"[^>]*>/i,
         /<meta name="twitter:description" content="([^"]*)"[^>]*>/i,
@@ -204,31 +218,39 @@ export class XPostFetcher {
       let content = '';
       let authorName = '';
 
+      // Extract content from meta tags
       for (const pattern of contentPatterns) {
         const match = html.match(pattern);
         if (match && match[1]) {
-          content = this.cleanExtractedText(match[1]);
-          break;
+          const extracted = this.cleanExtractedText(match[1]);
+          if (extracted && extracted.length > 10) {
+            content = extracted;
+            break;
+          }
         }
       }
 
+      // Extract author name from title
       const titleMatch = html.match(/<title>([^<]*)<\/title>/i);
       if (titleMatch) {
         authorName = this.extractAuthorFromTitle(titleMatch[1], parsed.username);
       }
 
-      return {
-        url,
-        content: content || `Post from @${parsed.username}`,
-        authorName: authorName || parsed.username,
-        authorUsername: parsed.username,
-        authorAvatar: `https://unavatar.io/x/${parsed.username}`,
-        mediaUrls: [],
-        likesCount: 0,
-        retweetsCount: 0,
-        repliesCount: 0,
-        createdAt: new Date().toISOString()
-      };
+      // Only return if we have meaningful content
+      if (content && content.length > 10) {
+        return {
+          url,
+          content,
+          authorName: authorName || parsed.username,
+          authorUsername: parsed.username,
+          authorAvatar: `https://unavatar.io/x/${parsed.username}`,
+          mediaUrls: [],
+          likesCount: 0,
+          retweetsCount: 0,
+          repliesCount: 0,
+          createdAt: new Date().toISOString()
+        };
+      }
     } catch (error) {
       console.error('Error extracting from HTML:', error);
     }
