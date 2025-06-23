@@ -23,9 +23,9 @@ export class XPostFetcher {
     return null;
   }
 
-  // Fetch real post data from X/Twitter URL
+  // Fetch post data from X/Twitter URL - works with minimal info
   static async fetchPostData(url: string): Promise<XPostData | null> {
-    console.log('Fetching real post data for URL:', url);
+    console.log('Fetching post data for URL:', url);
     
     const parsed = this.parseXUrl(url);
     if (!parsed) {
@@ -36,36 +36,54 @@ export class XPostFetcher {
     console.log('Parsed URL data:', parsed);
 
     try {
-      // Try Twitter's oEmbed API first - this gives us real content
-      const result = await this.fetchViaOEmbed(url);
+      // Try Twitter's oEmbed API first
+      const result = await this.fetchViaOEmbed(url, parsed);
       if (result) {
-        console.log('Successfully fetched real tweet data via oEmbed:', result);
+        console.log('Successfully fetched tweet data via oEmbed:', result);
         return result;
       }
 
-      // Try fetching via proxy to get meta tags
-      const proxyResult = await this.fetchViaProxy(url);
+      // Try fetching via proxy
+      const proxyResult = await this.fetchViaProxy(url, parsed);
       if (proxyResult) {
-        console.log('Successfully fetched real tweet data via proxy:', proxyResult);
+        console.log('Successfully fetched tweet data via proxy:', proxyResult);
         return proxyResult;
       }
 
       // Try meta extraction service
-      const metaResult = await this.fetchViaMetaTags(url);
+      const metaResult = await this.fetchViaMetaTags(url, parsed);
       if (metaResult) {
-        console.log('Successfully fetched real tweet data via meta tags:', metaResult);
+        console.log('Successfully fetched tweet data via meta tags:', metaResult);
         return metaResult;
       }
 
-    } catch (error) {
-      console.error('All methods failed:', error);
-    }
+      // If all else fails, create a basic post with minimal info
+      console.log('Creating basic post with minimal available info');
+      return this.createBasicPost(url, parsed);
 
-    console.log('Could not fetch real tweet data, URL may be invalid or inaccessible');
-    return null;
+    } catch (error) {
+      console.error('Error fetching post:', error);
+      // Fallback to basic post even on error
+      return this.createBasicPost(url, parsed);
+    }
   }
 
-  private static async fetchViaOEmbed(url: string): Promise<XPostData | null> {
+  private static createBasicPost(url: string, parsed: { username: string; postId: string }): XPostData {
+    return {
+      url,
+      content: `Post from @${parsed.username}`,
+      authorName: parsed.username,
+      authorUsername: parsed.username,
+      authorAvatar: `https://unavatar.io/x/${parsed.username}`,
+      mediaUrls: [],
+      likesCount: 0,
+      retweetsCount: 0,
+      repliesCount: 0,
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  private static async fetchViaOEmbed(url: string, parsed: { username: string; postId: string }): Promise<XPostData | null> {
     try {
       const oembedUrl = `https://publish.twitter.com/oembed?url=${encodeURIComponent(url)}&omit_script=true`;
       console.log('Trying oEmbed URL:', oembedUrl);
@@ -77,30 +95,23 @@ export class XPostFetcher {
         console.log('oEmbed response:', data);
         
         if (data.html) {
-          const parsed = this.parseXUrl(url);
-          if (!parsed) return null;
-
-          // Extract content from oEmbed HTML
           const tempDiv = document.createElement('div');
           tempDiv.innerHTML = data.html;
           
-          // Try to extract tweet text from the HTML
           const tweetText = this.extractTweetTextFromHTML(tempDiv);
           
-          if (tweetText && tweetText.length > 10) {
-            return {
-              url,
-              content: tweetText,
-              authorName: data.author_name || parsed.username,
-              authorUsername: parsed.username,
-              authorAvatar: data.author_url ? `${data.author_url}/profile_image` : `https://unavatar.io/x/${parsed.username}`,
-              mediaUrls: [],
-              likesCount: 0,
-              retweetsCount: 0,
-              repliesCount: 0,
-              createdAt: new Date().toISOString()
-            };
-          }
+          return {
+            url,
+            content: tweetText || `Post from @${parsed.username}`,
+            authorName: data.author_name || parsed.username,
+            authorUsername: parsed.username,
+            authorAvatar: `https://unavatar.io/x/${parsed.username}`,
+            mediaUrls: [],
+            likesCount: 0,
+            retweetsCount: 0,
+            repliesCount: 0,
+            createdAt: new Date().toISOString()
+          };
         }
       }
     } catch (error) {
@@ -110,7 +121,6 @@ export class XPostFetcher {
   }
 
   private static extractTweetTextFromHTML(element: HTMLElement): string {
-    // Look for the tweet text in various possible locations
     const selectors = [
       'p',
       '.tweet-text',
@@ -122,17 +132,11 @@ export class XPostFetcher {
     for (const selector of selectors) {
       const textElement = element.querySelector(selector);
       if (textElement) {
-        let text = textElement.textContent || textElement.innerText || '';
+        // Fix TypeScript error by using textContent which exists on Element
+        let text = textElement.textContent || '';
         text = this.cleanExtractedText(text);
         
-        // Filter out non-tweet content
-        if (text && 
-            text.length > 10 && 
-            !text.toLowerCase().includes('sign up') &&
-            !text.toLowerCase().includes('log in') &&
-            !text.toLowerCase().includes('follow') &&
-            !text.includes('pic.twitter.com') &&
-            !text.includes('— ')) {
+        if (text && text.length > 10) {
           return text;
         }
       }
@@ -141,7 +145,7 @@ export class XPostFetcher {
     return '';
   }
 
-  private static async fetchViaProxy(url: string): Promise<XPostData | null> {
+  private static async fetchViaProxy(url: string, parsed: { username: string; postId: string }): Promise<XPostData | null> {
     try {
       const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
       console.log('Trying proxy URL:', proxyUrl);
@@ -150,9 +154,6 @@ export class XPostFetcher {
       const data = await response.json();
       
       if (data.contents) {
-        const parsed = this.parseXUrl(url);
-        if (!parsed) return null;
-        
         return this.extractFromHTML(data.contents, parsed, url);
       }
     } catch (error) {
@@ -161,7 +162,7 @@ export class XPostFetcher {
     return null;
   }
 
-  private static async fetchViaMetaTags(url: string): Promise<XPostData | null> {
+  private static async fetchViaMetaTags(url: string, parsed: { username: string; postId: string }): Promise<XPostData | null> {
     try {
       const metaUrl = `https://jsonlink.io/api/extract?url=${encodeURIComponent(url)}`;
       console.log('Trying meta extraction URL:', metaUrl);
@@ -169,13 +170,7 @@ export class XPostFetcher {
       const response = await fetch(metaUrl);
       const data = await response.json();
       
-      const parsed = this.parseXUrl(url);
-      if (!parsed) return null;
-
-      if (data.description && data.description.length > 20 && 
-          !data.description.toLowerCase().includes('sign up') &&
-          !data.description.toLowerCase().includes('the latest tweets')) {
-        
+      if (data.description) {
         const authorName = this.extractAuthorFromTitle(data.title || '', parsed.username);
         
         return {
@@ -199,7 +194,6 @@ export class XPostFetcher {
 
   private static extractFromHTML(html: string, parsed: { username: string; postId: string }, url: string): XPostData | null {
     try {
-      // Enhanced patterns to extract real tweet content
       const contentPatterns = [
         /<meta property="twitter:description" content="([^"]*)"[^>]*>/i,
         /<meta name="twitter:description" content="([^"]*)"[^>]*>/i,
@@ -210,62 +204,35 @@ export class XPostFetcher {
       let content = '';
       let authorName = '';
 
-      // Extract content
       for (const pattern of contentPatterns) {
         const match = html.match(pattern);
-        if (match && match[1] && match[1].length > 20) {
-          const extractedContent = this.cleanExtractedText(match[1]);
-          
-          // Validate this is actual tweet content
-          if (this.isValidTweetContent(extractedContent)) {
-            content = extractedContent;
-            break;
-          }
+        if (match && match[1]) {
+          content = this.cleanExtractedText(match[1]);
+          break;
         }
       }
 
-      // Extract author name from title
       const titleMatch = html.match(/<title>([^<]*)<\/title>/i);
       if (titleMatch) {
         authorName = this.extractAuthorFromTitle(titleMatch[1], parsed.username);
       }
 
-      // Only return if we have valid content
-      if (content && content.length > 20) {
-        return {
-          url,
-          content,
-          authorName: authorName || parsed.username,
-          authorUsername: parsed.username,
-          authorAvatar: `https://unavatar.io/x/${parsed.username}`,
-          mediaUrls: [],
-          likesCount: 0,
-          retweetsCount: 0,
-          repliesCount: 0,
-          createdAt: new Date().toISOString()
-        };
-      }
+      return {
+        url,
+        content: content || `Post from @${parsed.username}`,
+        authorName: authorName || parsed.username,
+        authorUsername: parsed.username,
+        authorAvatar: `https://unavatar.io/x/${parsed.username}`,
+        mediaUrls: [],
+        likesCount: 0,
+        retweetsCount: 0,
+        repliesCount: 0,
+        createdAt: new Date().toISOString()
+      };
     } catch (error) {
       console.error('Error extracting from HTML:', error);
     }
     return null;
-  }
-
-  private static isValidTweetContent(content: string): boolean {
-    const invalidPhrases = [
-      'sign up',
-      'log in',
-      'create account',
-      'join twitter',
-      'the latest tweets',
-      'content from @',
-      'unable to fetch',
-      'error',
-      'not found'
-    ];
-
-    const lowerContent = content.toLowerCase();
-    return !invalidPhrases.some(phrase => lowerContent.includes(phrase));
   }
 
   private static extractAuthorFromTitle(title: string, username: string): string {
