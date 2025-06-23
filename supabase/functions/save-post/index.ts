@@ -56,15 +56,16 @@ Deno.serve(async (req) => {
     // Get the current user
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     
+    let userId: string;
+    
     if (userError || !user) {
       console.error('Auth error:', userError?.message || 'No user found');
       
-      // If user doesn't exist in auth.users, let's still try to proceed
-      // We'll extract the user ID from the JWT token manually
+      // Extract user ID from JWT token as fallback
       try {
         const token = authHeader.replace('Bearer ', '');
         const payload = JSON.parse(atob(token.split('.')[1]));
-        const userId = payload.sub;
+        userId = payload.sub;
         
         if (!userId) {
           throw new Error('No user ID in token');
@@ -72,77 +73,35 @@ Deno.serve(async (req) => {
         
         console.log('Using user ID from JWT:', userId);
         
-        const postData: SavePostRequest = await req.json()
-        console.log('Post data received:', { 
-          xPostId: postData.xPostId, 
-          authorUsername: postData.authorUsername,
-          contentLength: postData.content?.length 
-        });
-
-        // Save post to database using extracted user ID
-        const { data: post, error: postError } = await supabaseClient
-          .from('posts')
-          .insert({
-            user_id: userId,
-            x_post_id: postData.xPostId,
-            author_name: postData.authorName,
-            author_username: postData.authorUsername,
-            author_avatar: postData.authorAvatar,
-            content: postData.content,
-            media_urls: postData.mediaUrls || [],
-            created_at: postData.createdAt,
-            likes_count: postData.likesCount || 0,
-            retweets_count: postData.retweetsCount || 0,
-            replies_count: postData.repliesCount || 0,
-            x_url: postData.xUrl
-          })
-          .select()
-          .single()
-
-        if (postError) {
-          console.error('Error saving post:', postError);
-          return new Response(
-            JSON.stringify({ error: 'Failed to save post', details: postError.message }),
-            { 
-              status: 500, 
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            }
-          )
-        }
-
-        console.log('Post saved successfully:', post.id);
-
-        // Mock AI topic clustering
-        const topics = await mockTopicClustering(postData.content)
-        console.log('Generated topics:', topics);
-        
-        // Assign topics to post
-        for (const topic of topics) {
-          const { error: topicError } = await supabaseClient
-            .from('post_topics')
-            .insert({
-              post_id: post.id,
-              topic_id: topic.topicId,
-              confidence_score: topic.confidence,
-              is_manual: false
-            })
+        // Check if user exists in profiles table, if not create one
+        const { data: profile, error: profileError } = await supabaseClient
+          .from('profiles')
+          .select('id')
+          .eq('id', userId)
+          .single();
           
-          if (topicError) {
-            console.error('Error assigning topic:', topicError);
+        if (profileError && profileError.code === 'PGRST116') {
+          // User doesn't exist in profiles, create one
+          console.log('Creating user profile for:', userId);
+          const { error: createError } = await supabaseClient
+            .from('profiles')
+            .insert({
+              id: userId,
+              full_name: 'LiNX User',
+              email: `user-${userId.substring(0, 8)}@linx.app`
+            });
+            
+          if (createError) {
+            console.error('Error creating user profile:', createError);
+            return new Response(
+              JSON.stringify({ error: 'Failed to create user profile', details: createError.message }),
+              { 
+                status: 500, 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+              }
+            )
           }
         }
-
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            post,
-            assignedTopics: topics.length 
-          }),
-          { 
-            status: 200, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        )
         
       } catch (tokenError) {
         console.error('Error extracting user from token:', tokenError);
@@ -157,9 +116,10 @@ Deno.serve(async (req) => {
           }
         )
       }
+    } else {
+      userId = user.id;
+      console.log('User authenticated successfully:', userId);
     }
-
-    console.log('User authenticated successfully:', user.id);
 
     const postData: SavePostRequest = await req.json()
     console.log('Post data received:', { 
@@ -172,7 +132,7 @@ Deno.serve(async (req) => {
     const { data: post, error: postError } = await supabaseClient
       .from('posts')
       .insert({
-        user_id: user.id,
+        user_id: userId,
         x_post_id: postData.xPostId,
         author_name: postData.authorName,
         author_username: postData.authorUsername,

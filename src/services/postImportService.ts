@@ -53,6 +53,12 @@ export const postImportService = {
     const postId = this.parseXUrl(postData.url);
     
     try {
+      console.log('Invoking save-post function with data:', {
+        xPostId: postId || `manual_${Date.now()}`,
+        authorUsername: postData.authorUsername,
+        contentPreview: postData.content.substring(0, 50) + '...'
+      });
+
       const { data, error } = await supabase.functions.invoke('save-post', {
         body: {
           xPostId: postId || `manual_${Date.now()}`,
@@ -69,22 +75,31 @@ export const postImportService = {
         }
       });
 
-      console.log('Import response:', { data, error });
+      console.log('Save-post function response:', { data, error });
 
       if (error) {
         console.error('Import error details:', error);
         
         // Provide more specific error messages
         if (error.message?.includes('Edge Function returned a non-2xx status code')) {
-          throw new Error('Failed to save post. Please check your internet connection and try again.');
+          throw new Error('Server error while saving post. Please try again in a moment.');
         } else if (error.message?.includes('Authentication')) {
           throw new Error('Authentication failed. Please sign out and sign back in.');
+        } else if (error.message?.includes('Network')) {
+          throw new Error('Network error. Please check your internet connection and try again.');
         } else {
           throw new Error(`Import failed: ${error.message || 'Unknown error occurred'}`);
         }
       }
       
-      return data;
+      if (data?.success) {
+        console.log('Post imported successfully:', data);
+        return data;
+      } else {
+        console.error('Unexpected response format:', data);
+        throw new Error('Post import completed but response format was unexpected');
+      }
+      
     } catch (functionError) {
       console.error('Function invocation error:', functionError);
       
@@ -92,24 +107,28 @@ export const postImportService = {
         throw new Error('Network error. Please check your internet connection and try again.');
       }
       
+      // Re-throw the error as-is if it's already a formatted error from above
       throw functionError;
     }
   },
 
   // Import multiple posts
   async importMultiplePosts(posts: XPostData[]) {
+    console.log(`Starting import of ${posts.length} posts`);
     const results = [];
     
     for (const post of posts) {
       try {
         const result = await this.importPost(post);
         results.push({ success: true, post, result });
+        console.log(`Successfully imported post from @${post.authorUsername}`);
       } catch (error) {
         console.error('Failed to import post:', post.url, error);
         results.push({ success: false, post, error: error.message || 'Unknown error' });
       }
     }
     
+    console.log(`Import complete: ${results.filter(r => r.success).length}/${posts.length} successful`);
     return results;
   }
 };
