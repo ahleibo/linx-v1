@@ -2,12 +2,13 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Plus, X } from 'lucide-react';
+import { Loader2, Plus, Link } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { postImportService, type XPostData } from '@/services/postImportService';
+import { XPostFetcher } from '@/services/xPostFetcher';
+import { TweetCard } from './TweetCard';
 
 interface PostImportFormProps {
   onSuccess?: () => void;
@@ -17,55 +18,79 @@ interface PostImportFormProps {
 export const PostImportForm = ({ onSuccess, onCancel }: PostImportFormProps) => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [posts, setPosts] = useState<Partial<XPostData>[]>([{
-    url: '',
-    content: '',
-    authorName: '',
-    authorUsername: '',
-    createdAt: new Date().toISOString()
-  }]);
+  const [isFetching, setIsFetching] = useState(false);
+  const [urlInput, setUrlInput] = useState('');
+  const [fetchedPosts, setFetchedPosts] = useState<XPostData[]>([]);
 
-  const addNewPost = () => {
-    setPosts([...posts, {
-      url: '',
-      content: '',
-      authorName: '',
-      authorUsername: '',
-      createdAt: new Date().toISOString()
-    }]);
-  };
+  const handleFetchPost = async () => {
+    if (!urlInput.trim()) {
+      toast({
+        title: "URL required",
+        description: "Please enter a valid X post URL.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-  const removePost = (index: number) => {
-    if (posts.length > 1) {
-      setPosts(posts.filter((_, i) => i !== index));
+    setIsFetching(true);
+    try {
+      const postData = await XPostFetcher.fetchPostData(urlInput.trim());
+      
+      if (postData) {
+        // Check if post already exists in the list
+        const exists = fetchedPosts.some(post => post.url === postData.url);
+        if (!exists) {
+          setFetchedPosts(prev => [...prev, postData]);
+          setUrlInput('');
+          toast({
+            title: "Post fetched successfully",
+            description: "Review the post below and click Import to save it."
+          });
+        } else {
+          toast({
+            title: "Post already added",
+            description: "This post is already in your import list.",
+            variant: "destructive"
+          });
+        }
+      } else {
+        toast({
+          title: "Unable to fetch post",
+          description: "Please check the URL and try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error fetching post",
+        description: "Failed to fetch post data. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsFetching(false);
     }
   };
 
-  const updatePost = (index: number, field: keyof XPostData, value: string | number) => {
-    const updated = [...posts];
-    updated[index] = { ...updated[index], [field]: value };
-    setPosts(updated);
+  const handleRemovePost = (index: number) => {
+    setFetchedPosts(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (fetchedPosts.length === 0) {
+      toast({
+        title: "No posts to import",
+        description: "Please fetch at least one post before importing.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const validPosts = posts.filter(post => 
-        post.content && post.authorName && post.authorUsername
-      ) as XPostData[];
-
-      if (validPosts.length === 0) {
-        toast({
-          title: "No valid posts",
-          description: "Please fill in at least content, author name, and username for one post.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const results = await postImportService.importMultiplePosts(validPosts);
+      const results = await postImportService.importMultiplePosts(fetchedPosts);
       const successful = results.filter(r => r.success).length;
       const failed = results.filter(r => !r.success).length;
 
@@ -74,11 +99,12 @@ export const PostImportForm = ({ onSuccess, onCancel }: PostImportFormProps) => 
           title: "Posts imported successfully",
           description: `${successful} post${successful > 1 ? 's' : ''} imported${failed > 0 ? `, ${failed} failed` : ''}.`
         });
+        setFetchedPosts([]);
         onSuccess?.();
       } else {
         toast({
           title: "Import failed",
-          description: "No posts could be imported. Please check your data.",
+          description: "No posts could be imported. Please try again.",
           variant: "destructive"
         });
       }
@@ -99,131 +125,80 @@ export const PostImportForm = ({ onSuccess, onCancel }: PostImportFormProps) => 
         <CardTitle className="text-white">Import X Posts</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {posts.map((post, index) => (
-            <div key={index} className="space-y-4 p-4 border border-slate-600 rounded-lg relative">
-              {posts.length > 1 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removePost(index)}
-                  className="absolute top-2 right-2 text-slate-400 hover:text-red-400"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-              
-              <div className="space-y-2">
-                <Label className="text-slate-300">X Post URL (optional)</Label>
-                <Input
-                  placeholder="https://x.com/username/status/123456789"
-                  value={post.url || ''}
-                  onChange={(e) => updatePost(index, 'url', e.target.value)}
-                  className="bg-slate-700/50 border-slate-600 text-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Author Name *</Label>
-                  <Input
-                    placeholder="John Doe"
-                    value={post.authorName || ''}
-                    onChange={(e) => updatePost(index, 'authorName', e.target.value)}
-                    className="bg-slate-700/50 border-slate-600 text-white"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Username *</Label>
-                  <Input
-                    placeholder="johndoe"
-                    value={post.authorUsername || ''}
-                    onChange={(e) => updatePost(index, 'authorUsername', e.target.value)}
-                    className="bg-slate-700/50 border-slate-600 text-white"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-slate-300">Post Content *</Label>
-                <Textarea
-                  placeholder="Enter the post content here..."
-                  value={post.content || ''}
-                  onChange={(e) => updatePost(index, 'content', e.target.value)}
-                  className="bg-slate-700/50 border-slate-600 text-white min-h-[100px]"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Likes</Label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={post.likesCount || ''}
-                    onChange={(e) => updatePost(index, 'likesCount', parseInt(e.target.value) || 0)}
-                    className="bg-slate-700/50 border-slate-600 text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Retweets</Label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={post.retweetsCount || ''}
-                    onChange={(e) => updatePost(index, 'retweetsCount', parseInt(e.target.value) || 0)}
-                    className="bg-slate-700/50 border-slate-600 text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Replies</Label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={post.repliesCount || ''}
-                    onChange={(e) => updatePost(index, 'repliesCount', parseInt(e.target.value) || 0)}
-                    className="bg-slate-700/50 border-slate-600 text-white"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={addNewPost}
-            className="w-full border-slate-600 text-slate-300 hover:bg-slate-700"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Another Post
-          </Button>
-
-          <div className="flex space-x-4">
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="flex-1 bg-blue-500 hover:bg-blue-600"
-            >
-              {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Import Posts
-            </Button>
-            {onCancel && (
+        {/* URL Input Section */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-slate-300">X Post URL</Label>
+            <div className="flex space-x-2">
+              <Input
+                placeholder="https://x.com/username/status/123456789"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                className="bg-slate-700/50 border-slate-600 text-white flex-1"
+                onKeyPress={(e) => e.key === 'Enter' && handleFetchPost()}
+              />
               <Button
                 type="button"
-                variant="outline"
-                onClick={onCancel}
-                className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                onClick={handleFetchPost}
+                disabled={isFetching || !urlInput.trim()}
+                className="bg-blue-500 hover:bg-blue-600"
               >
-                Cancel
+                {isFetching ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Link className="h-4 w-4" />
+                )}
               </Button>
-            )}
+            </div>
+            <p className="text-sm text-slate-400">
+              Paste an X (Twitter) post URL to automatically fetch all post data
+            </p>
           </div>
-        </form>
+        </div>
+
+        {/* Fetched Posts Preview */}
+        {fetchedPosts.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">
+                Posts to Import ({fetchedPosts.length})
+              </h3>
+            </div>
+            
+            <div className="max-h-96 overflow-y-auto space-y-4">
+              {fetchedPosts.map((post, index) => (
+                <TweetCard
+                  key={index}
+                  post={post}
+                  onRemove={() => handleRemovePost(index)}
+                  showRemoveButton={true}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex space-x-4">
+          <Button
+            onClick={handleSubmit}
+            disabled={isLoading || fetchedPosts.length === 0}
+            className="flex-1 bg-blue-500 hover:bg-blue-600"
+          >
+            {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Import {fetchedPosts.length > 0 && `${fetchedPosts.length} Post${fetchedPosts.length > 1 ? 's' : ''}`}
+          </Button>
+          {onCancel && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+            >
+              Cancel
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
