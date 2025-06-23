@@ -66,7 +66,7 @@ const Profile = () => {
             </AvatarFallback>
           </Avatar>
           
-          <div className="flex flex-col justify-start text-center">
+          <div className="flex flex-col justify-start items-center text-center space-y-1">
             <h2 className="text-2xl font-bold">
               {user?.user_metadata?.full_name || 'LiNX User'}
             </h2>
