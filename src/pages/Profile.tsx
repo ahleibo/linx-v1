@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Search, Mic, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,34 +13,33 @@ import { useProfileStats } from '@/hooks/useProfileStats';
 import { CollectionGrid } from '@/components/profile/CollectionGrid';
 import { InsightsSection } from '@/components/profile/InsightsSection';
 import { PostSearchResults } from '@/components/profile/PostSearchResults';
-
 const Profile = () => {
-  const { user } = useAuth();
-  const { searchQuery, setSearchQuery, searchResults, isSearching } = usePosts();
-  const { stats, isLoading: statsLoading } = useProfileStats();
+  const {
+    user
+  } = useAuth();
+  const {
+    searchQuery,
+    setSearchQuery,
+    searchResults,
+    isSearching
+  } = usePosts();
+  const {
+    stats,
+    isLoading: statsLoading
+  } = useProfileStats();
   const [showVoiceSearch, setShowVoiceSearch] = useState(false);
-
   const handleVoiceResult = (transcript: string) => {
     setSearchQuery(transcript);
     setShowVoiceSearch(false);
   };
-
   const handleImportSuccess = () => {
     // Refresh the page to show new posts and updated stats
     window.location.reload();
   };
-
   const getUserInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
-
-  return (
-    <div className="min-h-screen bg-slate-950 text-white pb-20">
+  return <div className="min-h-screen bg-slate-950 text-white pb-20">
       {/* Header */}
       <div className="sticky top-0 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 z-10">
         <div className="flex items-center justify-between p-4">
@@ -60,18 +58,15 @@ const Profile = () => {
             <Avatar className="w-24 h-24 border-4 border-slate-700">
               <AvatarImage src={user?.user_metadata?.avatar_url} />
               <AvatarFallback className="bg-blue-500 text-white text-xl font-bold">
-                {user?.user_metadata?.full_name 
-                  ? getUserInitials(user.user_metadata.full_name)
-                  : 'LX'
-                }
+                {user?.user_metadata?.full_name ? getUserInitials(user.user_metadata.full_name) : 'LX'}
               </AvatarFallback>
             </Avatar>
             
-            <div className="flex flex-col justify-start items-center text-center space-y-1">
-              <h2 className="text-2xl font-bold">
+            <div className="flex flex-col justify-start items-center text-center space-y-1 text-left ">
+              <h2 className="text-2xl font-bold text-left">
                 {user?.user_metadata?.full_name || 'LiNX User'}
               </h2>
-              <p className="text-slate-400">@{user?.email?.split('@')[0] || 'user'}</p>
+              <p className="text-slate-400 text-left ">@{user?.email?.split('@')[0] || 'user'}</p>
               <p className="text-sm text-slate-300 mt-2 max-w-xs">
                 Curating knowledge, one post at a time. Building connections through shared insights.
               </p>
@@ -83,30 +78,14 @@ const Profile = () => {
         <div className="space-y-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-5 w-5" />
-            <Input
-              placeholder="Search your posts..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-12 bg-slate-800/50 border-slate-700 text-white placeholder-slate-400 focus:border-blue-500"
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowVoiceSearch(true)}
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white"
-            >
+            <Input placeholder="Search your posts..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 pr-12 bg-slate-800/50 border-slate-700 text-white placeholder-slate-400 focus:border-blue-500" />
+            <Button variant="ghost" size="sm" onClick={() => setShowVoiceSearch(true)} className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white">
               <Mic className="h-4 w-4" />
             </Button>
           </div>
 
           {/* Search Results */}
-          {searchQuery && (
-            <PostSearchResults 
-              query={searchQuery}
-              results={searchResults}
-              isLoading={isSearching}
-            />
-          )}
+          {searchQuery && <PostSearchResults query={searchQuery} results={searchResults} isLoading={isSearching} />}
         </div>
 
         {/* Collections Section */}
@@ -154,12 +133,9 @@ const Profile = () => {
                 <span className="text-white">{stats?.monthlyPosts || 0} posts</span>
               </div>
               <div className="w-full bg-slate-700 rounded-full h-2">
-                <div 
-                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                  style={{ 
-                    width: `${Math.min(((stats?.monthlyPosts || 0) / 50) * 100, 100)}%` 
-                  }}
-                />
+                <div className="bg-blue-500 h-2 rounded-full transition-all duration-300" style={{
+                width: `${Math.min((stats?.monthlyPosts || 0) / 50 * 100, 100)}%`
+              }} />
               </div>
             </div>
           </CardContent>
@@ -167,14 +143,7 @@ const Profile = () => {
       </div>
 
       {/* Voice Search Modal */}
-      {showVoiceSearch && (
-        <VoiceSearch
-          onResult={handleVoiceResult}
-          onClose={() => setShowVoiceSearch(false)}
-        />
-      )}
-    </div>
-  );
+      {showVoiceSearch && <VoiceSearch onResult={handleVoiceResult} onClose={() => setShowVoiceSearch(false)} />}
+    </div>;
 };
-
 export default Profile;
