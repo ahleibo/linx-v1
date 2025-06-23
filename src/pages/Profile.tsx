@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Search, Mic, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -65,7 +66,7 @@ const Profile = () => {
             </AvatarFallback>
           </Avatar>
           
-          <div className="text-center">
+          <div className="flex flex-col justify-start text-center">
             <h2 className="text-2xl font-bold">
               {user?.user_metadata?.full_name || 'LiNX User'}
             </h2>
