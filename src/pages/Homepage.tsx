@@ -5,99 +5,33 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Mic, MicOff, User, Heart, MessageCircle, Repeat2, Share } from 'lucide-react';
 import { cn } from "@/lib/utils";
-
-// Mock data for posts
-const mockPosts = [
-  {
-    id: '1',
-    author: {
-      name: 'Tech Innovator',
-      username: '@techinnovator',
-      avatar: '/placeholder.svg'
-    },
-    content: 'Just discovered an amazing breakthrough in AI research that could revolutionize how we approach machine learning. The implications for personal knowledge management are huge! 🧠✨',
-    media: null,
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-    likes: 42,
-    retweets: 12,
-    replies: 8
-  },
-  {
-    id: '2',
-    author: {
-      name: 'Design Master',
-      username: '@designmaster',
-      avatar: '/placeholder.svg'
-    },
-    content: 'Minimalist design isn\'t about removing features—it\'s about removing distractions. Every element should serve a purpose.',
-    media: null,
-    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
-    likes: 156,
-    retweets: 34,
-    replies: 23
-  },
-  {
-    id: '3',
-    author: {
-      name: 'Sports Analytics',
-      username: '@sportsdata',
-      avatar: '/placeholder.svg'
-    },
-    content: 'LeBron James just hit another milestone! His consistency over 21 seasons is unprecedented. The data shows he\'s still performing at an elite level. 🏀📊',
-    media: null,
-    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
-    likes: 89,
-    retweets: 45,
-    replies: 31
-  },
-  {
-    id: '4',
-    author: {
-      name: 'Art Curator',
-      username: '@artcurator',
-      avatar: '/placeholder.svg'
-    },
-    content: 'Visited the new contemporary art exhibition today. The intersection of digital and traditional mediums creates such powerful narratives. Art continues to evolve.',
-    media: null,
-    timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000), // 8 hours ago
-    likes: 67,
-    retweets: 19,
-    replies: 15
-  },
-  {
-    id: '5',
-    author: {
-      name: 'Climate Researcher',
-      username: '@climatedata',
-      avatar: '/placeholder.svg'
-    },
-    content: 'New research shows promising results for carbon capture technology. Small steps, but every innovation counts in our fight against climate change. 🌱',
-    media: null,
-    timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 hours ago
-    likes: 203,
-    retweets: 78,
-    replies: 42
-  }
-];
+import { usePosts } from '@/hooks/usePosts';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Post {
   id: string;
-  author: {
-    name: string;
-    username: string;
-    avatar: string;
-  };
+  author_name: string;
+  author_username: string;
+  author_avatar: string | null;
   content: string;
-  media: string | null;
-  timestamp: Date;
-  likes: number;
-  retweets: number;
-  replies: number;
+  media_urls: string[] | null;
+  created_at: string;
+  likes_count: number | null;
+  retweets_count: number | null;
+  replies_count: number | null;
+  post_topics?: Array<{
+    topics: {
+      id: string;
+      name: string;
+      color: string;
+    };
+  }>;
 }
 
-const formatTimeAgo = (timestamp: Date) => {
+const formatTimeAgo = (timestamp: string) => {
   const now = new Date();
-  const diffInSeconds = Math.floor((now.getTime() - timestamp.getTime()) / 1000);
+  const postTime = new Date(timestamp);
+  const diffInSeconds = Math.floor((now.getTime() - postTime.getTime()) / 1000);
   
   if (diffInSeconds < 60) return `${diffInSeconds}s`;
   if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m`;
@@ -106,42 +40,77 @@ const formatTimeAgo = (timestamp: Date) => {
 };
 
 const PostCard = ({ post }: { post: Post }) => {
+  const topics = post.post_topics?.map(pt => pt.topics) || [];
+
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 p-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
       <div className="flex space-x-3">
         {/* Avatar */}
         <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
-          <User className="w-6 h-6 text-white" />
+          {post.author_avatar ? (
+            <img src={post.author_avatar} alt={post.author_name} className="w-full h-full rounded-full object-cover" />
+          ) : (
+            <User className="w-6 h-6 text-white" />
+          )}
         </div>
         
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="flex items-center space-x-2 mb-1">
-            <h3 className="font-bold text-gray-900 dark:text-white text-sm">{post.author.name}</h3>
-            <span className="text-gray-500 dark:text-gray-400 text-sm">{post.author.username}</span>
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm">{post.author_name}</h3>
+            <span className="text-gray-500 dark:text-gray-400 text-sm">@{post.author_username}</span>
             <span className="text-gray-500 dark:text-gray-400 text-sm">·</span>
-            <span className="text-gray-500 dark:text-gray-400 text-sm">{formatTimeAgo(post.timestamp)}</span>
+            <span className="text-gray-500 dark:text-gray-400 text-sm">{formatTimeAgo(post.created_at)}</span>
           </div>
           
           {/* Post content */}
           <p className="text-gray-900 dark:text-white text-sm leading-relaxed mb-3">{post.content}</p>
           
+          {/* Topics */}
+          {topics.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-3">
+              {topics.map((topic) => (
+                <span
+                  key={topic.id}
+                  className="px-2 py-1 text-xs rounded-full text-white"
+                  style={{ backgroundColor: topic.color }}
+                >
+                  {topic.name}
+                </span>
+              ))}
+            </div>
+          )}
+          
+          {/* Media */}
+          {post.media_urls && post.media_urls.length > 0 && (
+            <div className="mb-3 grid grid-cols-2 gap-2">
+              {post.media_urls.slice(0, 4).map((url, index) => (
+                <img
+                  key={index}
+                  src={url}
+                  alt="Post media"
+                  className="rounded-lg object-cover w-full h-32"
+                />
+              ))}
+            </div>
+          )}
+          
           {/* Actions */}
           <div className="flex items-center justify-between max-w-md">
             <Button variant="ghost" size="sm" className="text-gray-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2">
               <MessageCircle className="w-4 h-4 mr-1" />
-              <span className="text-xs">{post.replies}</span>
+              <span className="text-xs">{post.replies_count || 0}</span>
             </Button>
             
             <Button variant="ghost" size="sm" className="text-gray-500 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 p-2">
               <Repeat2 className="w-4 h-4 mr-1" />
-              <span className="text-xs">{post.retweets}</span>
+              <span className="text-xs">{post.retweets_count || 0}</span>
             </Button>
             
             <Button variant="ghost" size="sm" className="text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2">
               <Heart className="w-4 h-4 mr-1" />
-              <span className="text-xs">{post.likes}</span>
+              <span className="text-xs">{post.likes_count || 0}</span>
             </Button>
             
             <Button variant="ghost" size="sm" className="text-gray-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2">
@@ -155,35 +124,33 @@ const PostCard = ({ post }: { post: Post }) => {
 };
 
 const Homepage = () => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useAuth();
+  const {
+    posts,
+    isLoading,
+    searchResults,
+    isSearching,
+    searchQuery,
+    setSearchQuery,
+    chatMutation
+  } = usePosts();
+
   const [isVoiceMode, setIsVoiceMode] = useState(false);
-  const [filteredPosts, setFilteredPosts] = useState<Post[]>(mockPosts);
   const [isListening, setIsListening] = useState(false);
+  const [aiResponse, setAiResponse] = useState<string>('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  // Mock search functionality
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredPosts(mockPosts);
-    } else {
-      const filtered = mockPosts.filter(post => 
-        post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.author.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.author.username.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredPosts(filtered);
-    }
-  }, [searchQuery]);
+  const displayPosts = searchQuery ? searchResults : posts;
+  const isLoadingPosts = searchQuery ? isSearching : isLoading;
 
   // Mock voice recognition
   const handleVoiceToggle = () => {
     setIsVoiceMode(!isVoiceMode);
     if (!isVoiceMode) {
       setIsListening(true);
-      // Simulate voice recognition
       setTimeout(() => {
         setIsListening(false);
-        setSearchQuery('sports'); // Mock voice input
+        setSearchQuery('sports');
       }, 2000);
     } else {
       setIsListening(false);
@@ -191,15 +158,35 @@ const Homepage = () => {
     }
   };
 
-  const handleSearch = (query: string) => {
+  const handleSearch = async (query: string) => {
     setSearchQuery(query);
     
-    // Mock LLM responses for specific queries
-    if (query.toLowerCase().includes('summarize sports')) {
-      // This would integrate with LLM in the future
-      console.log('LLM Query: Summarize sports posts');
+    // Process AI queries
+    if (query.toLowerCase().includes('summarize') || 
+        query.toLowerCase().includes('find') || 
+        query.toLowerCase().includes('show me')) {
+      
+      try {
+        const response = await chatMutation.mutateAsync(query);
+        setAiResponse(response.message);
+      } catch (error) {
+        console.error('AI query failed:', error);
+      }
+    } else {
+      setAiResponse('');
     }
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Please sign in</h2>
+          <p className="text-gray-600 dark:text-gray-400">You need to be authenticated to view your posts.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
@@ -244,10 +231,22 @@ const Homepage = () => {
           {/* Search Results Info */}
           {searchQuery && (
             <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-              {filteredPosts.length} post{filteredPosts.length !== 1 ? 's' : ''} found
-              {searchQuery.toLowerCase().includes('summarize') && (
-                <span className="ml-2 text-blue-600 dark:text-blue-400">• AI summary available</span>
+              {displayPosts.length} post{displayPosts.length !== 1 ? 's' : ''} found
+              {chatMutation.isPending && (
+                <span className="ml-2 text-blue-600 dark:text-blue-400">• AI processing...</span>
               )}
+            </div>
+          )}
+          
+          {/* AI Response */}
+          {aiResponse && (
+            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-start space-x-2">
+                <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-white text-xs font-bold">AI</span>
+                </div>
+                <p className="text-sm text-blue-900 dark:text-blue-100">{aiResponse}</p>
+              </div>
             </div>
           )}
         </div>
@@ -256,8 +255,12 @@ const Homepage = () => {
       {/* Feed */}
       <ScrollArea className="flex-1" ref={scrollAreaRef}>
         <div className="animate-fade-in">
-          {filteredPosts.length > 0 ? (
-            filteredPosts.map((post) => (
+          {isLoadingPosts ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : displayPosts.length > 0 ? (
+            displayPosts.map((post) => (
               <PostCard key={post.id} post={post} />
             ))
           ) : (
@@ -265,16 +268,21 @@ const Homepage = () => {
               <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
                 <Search className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No posts found</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                {searchQuery ? 'No posts found' : 'No posts yet'}
+              </h3>
               <p className="text-gray-600 dark:text-gray-400 text-center">
-                Try searching for different keywords or topics
+                {searchQuery 
+                  ? 'Try searching for different keywords or topics'
+                  : 'Start by saving some posts from X to see them here'
+                }
               </p>
             </div>
           )}
         </div>
       </ScrollArea>
 
-      {/* Loading indicator for future API calls */}
+      {/* Loading indicator for voice */}
       {isListening && (
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg animate-pulse">
           <div className="flex items-center space-x-2">
