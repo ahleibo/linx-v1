@@ -24,9 +24,9 @@ export class XPostFetcher {
     return null;
   }
 
-  // Enhanced function to generate more realistic post data based on URL
+  // Fetch real post data from X/Twitter URL
   static async fetchPostData(url: string): Promise<XPostData | null> {
-    console.log('Fetching post data for URL:', url);
+    console.log('Fetching real post data for URL:', url);
     
     const parsed = this.parseXUrl(url);
     if (!parsed) {
@@ -36,77 +36,125 @@ export class XPostFetcher {
 
     console.log('Parsed URL data:', parsed);
 
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      // Use a proxy service or scraping method to get real post data
+      // For now, we'll try to extract basic information from the URL structure
+      // and use open graph tags or similar methods
+      
+      const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+      const data = await response.json();
+      
+      if (data.contents) {
+        const htmlContent = data.contents;
+        const postData = this.extractPostDataFromHTML(htmlContent, parsed, url);
+        
+        if (postData) {
+          console.log('Successfully extracted real post data:', postData);
+          return postData;
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to fetch real post data, falling back to URL-based extraction:', error);
+    }
 
-    // Generate realistic mock data based on the actual username and post ID
-    const mockData: XPostData = {
+    // Fallback: Extract what we can from the URL and provide a basic preview
+    const fallbackData: XPostData = {
       url,
-      content: this.generateContentBasedOnUsername(parsed.username),
+      content: `Preview unavailable - Direct post link: ${url}`,
       authorName: this.generateDisplayName(parsed.username),
       authorUsername: parsed.username,
       authorAvatar: `https://ui-avatars.com/api/?name=${parsed.username}&background=1DA1F2&color=fff&size=48`,
-      mediaUrls: this.shouldIncludeMedia() ? [
-        `https://picsum.photos/600/400?random=${parsed.postId}`
-      ] : [],
-      likesCount: this.generateRealisticEngagement('likes'),
-      retweetsCount: this.generateRealisticEngagement('retweets'),
-      repliesCount: this.generateRealisticEngagement('replies'),
-      createdAt: this.generateRealisticDate()
+      mediaUrls: [],
+      likesCount: 0,
+      retweetsCount: 0,
+      repliesCount: 0,
+      createdAt: new Date().toISOString()
     };
 
-    console.log('Generated realistic post data:', mockData);
-    return mockData;
+    console.log('Using fallback post data:', fallbackData);
+    return fallbackData;
   }
 
-  private static generateContentBasedOnUsername(username: string): string {
-    // Generate more contextual content based on the username
-    const usernameLower = username.toLowerCase();
+  private static extractPostDataFromHTML(html: string, parsed: { username: string; postId: string }, url: string): XPostData | null {
+    try {
+      // Extract Open Graph and Twitter Card meta tags
+      const titleMatch = html.match(/<meta property="og:title" content="([^"]*)"/) || 
+                        html.match(/<meta name="twitter:title" content="([^"]*)"/) ||
+                        html.match(/<title>([^<]*)<\/title>/);
+      
+      const descriptionMatch = html.match(/<meta property="og:description" content="([^"]*)"/) ||
+                              html.match(/<meta name="twitter:description" content="([^"]*)"/) ||
+                              html.match(/<meta name="description" content="([^"]*)"/);
+      
+      const imageMatch = html.match(/<meta property="og:image" content="([^"]*)"/) ||
+                        html.match(/<meta name="twitter:image" content="([^"]*)"/);
+
+      // Try to extract tweet text from the HTML structure
+      let content = '';
+      if (descriptionMatch && descriptionMatch[1]) {
+        content = this.cleanExtractedText(descriptionMatch[1]);
+      } else if (titleMatch && titleMatch[1]) {
+        // Twitter titles often contain the username and tweet text
+        const title = titleMatch[1];
+        const tweetTextMatch = title.match(/^.*?on X: "(.+)"$/) || 
+                              title.match(/^.*?: "(.+)"$/);
+        if (tweetTextMatch) {
+          content = this.cleanExtractedText(tweetTextMatch[1]);
+        } else {
+          content = this.cleanExtractedText(title);
+        }
+      }
+
+      if (!content) {
+        content = `Post from @${parsed.username} - View full content at ${url}`;
+      }
+
+      const authorName = this.extractAuthorName(html, parsed.username);
+      const mediaUrls = imageMatch && imageMatch[1] ? [imageMatch[1]] : [];
+
+      return {
+        url,
+        content,
+        authorName,
+        authorUsername: parsed.username,
+        authorAvatar: `https://ui-avatars.com/api/?name=${parsed.username}&background=1DA1F2&color=fff&size=48`,
+        mediaUrls,
+        likesCount: 0,
+        retweetsCount: 0,
+        repliesCount: 0,
+        createdAt: new Date().toISOString()
+      };
+
+    } catch (error) {
+      console.error('Error extracting post data from HTML:', error);
+      return null;
+    }
+  }
+
+  private static extractAuthorName(html: string, username: string): string {
+    // Try to extract the display name from various meta tags
+    const authorMatch = html.match(/<meta name="twitter:creator" content="@?([^"]*)"/) ||
+                       html.match(/<meta property="og:site_name" content="([^"]*)"/) ||
+                       html.match(new RegExp(`<title>([^(]*?)\\s*\\(.*?@${username}`, 'i'));
     
-    // Tech-related usernames
-    if (usernameLower.includes('dev') || usernameLower.includes('code') || usernameLower.includes('tech')) {
-      const techContent = [
-        `Just shipped a major feature update! The performance improvements are incredible 🚀 #webdev #programming`,
-        `Working on some fascinating machine learning models today. The future is here! 🤖 #AI #MachineLearning`,
-        `Code review tip: Always consider the maintainability of your solutions, not just the cleverness 💡 #coding`,
-        `Debugging session complete ✅ Sometimes the best solution is the simplest one #programming #debugging`
-      ];
-      return techContent[Math.floor(Math.random() * techContent.length)];
+    if (authorMatch && authorMatch[1]) {
+      return authorMatch[1].trim();
     }
     
-    // Business/professional usernames
-    if (usernameLower.includes('ceo') || usernameLower.includes('founder') || usernameLower.includes('business')) {
-      const businessContent = [
-        `Excited to announce our Q4 results! Team effort made this possible 📈 #business #growth`,
-        `Leadership isn't about being in charge, it's about taking care of those in your charge 💼 #leadership`,
-        `Just wrapped up an incredible board meeting. The vision for 2024 is crystal clear! #strategy #business`,
-        `Building a company culture where everyone can thrive is our top priority 🌟 #culture #team`
-      ];
-      return businessContent[Math.floor(Math.random() * businessContent.length)];
-    }
-    
-    // Creative/design usernames
-    if (usernameLower.includes('design') || usernameLower.includes('art') || usernameLower.includes('creative')) {
-      const creativeContent = [
-        `Just finished a new design project that I'm incredibly proud of! 🎨 #design #creativity`,
-        `The intersection of art and technology continues to amaze me every day ✨ #digitalart #design`,
-        `Color theory in action: How the right palette can completely transform user experience 🌈 #UX #design`,
-        `Sketching ideas on paper before jumping to digital tools. Old school but effective! ✏️ #design #process`
-      ];
-      return creativeContent[Math.floor(Math.random() * creativeContent.length)];
-    }
-    
-    // Default general content
-    const generalContent = [
-      `Beautiful morning with coffee ☕️ and some great reading. Perfect start to the day!`,
-      `Reflecting on how much we can accomplish when we work together towards a common goal 🤝`,
-      `Sometimes the best ideas come when you step away from the screen and take a walk 🚶‍♂️`,
-      `Grateful for the amazing community we've built here. Every interaction matters! 💫`,
-      `Weekend project turned into something bigger than expected. Love when that happens! 🔥`,
-      `The power of continuous learning never ceases to amaze me. Always something new to discover 📚`
-    ];
-    
-    return generalContent[Math.floor(Math.random() * generalContent.length)];
+    return this.generateDisplayName(username);
+  }
+
+  private static cleanExtractedText(text: string): string {
+    // Clean up extracted text by decoding HTML entities and removing extra whitespace
+    return text
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&#x27;/g, "'")
+      .replace(/&#x2F;/g, '/')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   private static generateDisplayName(username: string): string {
@@ -127,30 +175,5 @@ export class XPostFetcher {
     
     const pattern = patterns[Math.floor(Math.random() * patterns.length)];
     return pattern();
-  }
-
-  private static generateRealisticEngagement(type: 'likes' | 'retweets' | 'replies'): number {
-    // Generate more realistic engagement numbers
-    const baseRanges = {
-      likes: { min: 10, max: 500 },
-      retweets: { min: 2, max: 100 },
-      replies: { min: 1, max: 50 }
-    };
-    
-    const range = baseRanges[type];
-    return Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
-  }
-
-  private static shouldIncludeMedia(): boolean {
-    // 40% chance of including media
-    return Math.random() > 0.6;
-  }
-
-  private static generateRealisticDate(): string {
-    // Generate a date within the last 7 days for more recent feeling
-    const now = Date.now();
-    const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
-    const randomTime = sevenDaysAgo + Math.random() * (now - sevenDaysAgo);
-    return new Date(randomTime).toISOString();
   }
 }
