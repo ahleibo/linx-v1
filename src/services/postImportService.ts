@@ -33,6 +33,22 @@ export const postImportService = {
 
   // Import a single post
   async importPost(postData: XPostData) {
+    console.log('Starting import for post:', postData.url);
+    
+    // Get current user session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      throw new Error('Authentication error: ' + sessionError.message);
+    }
+    
+    if (!session?.user) {
+      throw new Error('You must be logged in to import posts');
+    }
+    
+    console.log('User authenticated, proceeding with import');
+    
     const postId = this.parseXUrl(postData.url);
     
     const { data, error } = await supabase.functions.invoke('save-post', {
@@ -51,7 +67,12 @@ export const postImportService = {
       }
     });
 
-    if (error) throw error;
+    console.log('Import response:', { data, error });
+
+    if (error) {
+      console.error('Import error:', error);
+      throw error;
+    }
     return data;
   },
 
@@ -63,6 +84,7 @@ export const postImportService = {
         const result = await this.importPost(post);
         results.push({ success: true, post, result });
       } catch (error) {
+        console.error('Failed to import post:', post.url, error);
         results.push({ success: false, post, error });
       }
     }

@@ -33,41 +33,72 @@ Deno.serve(async (req) => {
     console.log('Environment check - SUPABASE_URL exists:', !!Deno.env.get('SUPABASE_URL'));
     console.log('Environment check - SUPABASE_ANON_KEY exists:', !!Deno.env.get('SUPABASE_ANON_KEY'));
     
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
-    )
-
-    console.log('Authorization header:', req.headers.get('Authorization') ? 'Present' : 'Missing');
-
-    // Get the current user
-    const {
-      data: { user },
-      error: userError
-    } = await supabaseClient.auth.getUser()
-
-    console.log('User lookup result:', { user: user?.id, error: userError });
-
-    if (userError) {
-      console.error('User error:', userError);
+    // Get authorization header
+    const authHeader = req.headers.get('Authorization');
+    console.log('Authorization header:', authHeader ? 'Present' : 'Missing');
+    
+    if (!authHeader) {
+      console.error('No authorization header provided');
       return new Response(
-        JSON.stringify({ error: 'Authentication error', details: userError.message }),
+        JSON.stringify({ error: 'Authorization header is required' }),
         { 
           status: 401, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
+    
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
+    )
+
+    // Get the current user with better error handling
+    let user;
+    try {
+      const { data: { user: authUser }, error: userError } = await supabaseClient.auth.getUser();
+      
+      if (userError) {
+        console.error('Auth error details:', userError);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Authentication failed', 
+            details: userError.message,
+            code: userError.status || 401
+          }),
+          { 
+            status: 401, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+      
+      user = authUser;
+    } catch (authException) {
+      console.error('Authentication exception:', authException);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Authentication system error', 
+          details: authException.message 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
+    }
+
+    console.log('User lookup result:', { userId: user?.id, email: user?.email });
 
     if (!user) {
-      console.error('No user found');
+      console.error('No authenticated user found');
       return new Response(
-        JSON.stringify({ error: 'Unauthorized - no user found' }),
+        JSON.stringify({ error: 'User not authenticated' }),
         { 
           status: 401, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }

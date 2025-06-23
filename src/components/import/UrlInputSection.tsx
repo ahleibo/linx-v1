@@ -30,6 +30,7 @@ export const UrlInputSection = ({ onPostFetched }: UrlInputSectionProps) => {
   };
 
   const handleFetchPost = async () => {
+    console.log('Starting fetch process for URL:', urlInput);
     setError(null);
     
     if (!urlInput.trim()) {
@@ -49,6 +50,7 @@ export const UrlInputSection = ({ onPostFetched }: UrlInputSectionProps) => {
       const postData = await XPostFetcher.fetchPostData(urlInput.trim());
       
       if (postData) {
+        console.log('Post data fetched successfully:', postData);
         onPostFetched(postData);
         setUrlInput('');
         setError(null);
@@ -57,6 +59,7 @@ export const UrlInputSection = ({ onPostFetched }: UrlInputSectionProps) => {
           description: "Review the post below and click Import to save it."
         });
       } else {
+        console.error('No post data returned from fetcher');
         setError("Unable to fetch post data. Please check the URL and try again.");
         toast({
           title: "Unable to fetch post",
@@ -66,10 +69,10 @@ export const UrlInputSection = ({ onPostFetched }: UrlInputSectionProps) => {
       }
     } catch (error) {
       console.error('Error fetching post:', error);
-      setError("Failed to fetch post data. Please try again.");
+      setError(`Failed to fetch post data: ${error.message || 'Unknown error'}`);
       toast({
         title: "Error fetching post",
-        description: "Failed to fetch post data. Please try again.",
+        description: `Failed to fetch post data: ${error.message || 'Please try again.'}`,
         variant: "destructive"
       });
     } finally {
