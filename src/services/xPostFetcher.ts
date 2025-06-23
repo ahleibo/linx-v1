@@ -39,15 +39,15 @@ export class XPostFetcher {
     try {
       // Try multiple approaches to get post data
       const methods = [
-        () => this.fetchViaAllOrigins(url),
-        () => this.fetchViaAlternateProxy(url),
-        () => this.fetchDirectMetadata(url)
+        () => this.fetchViaOEmbed(url),
+        () => this.fetchViaProxy(url),
+        () => this.fetchViaMetaTags(url)
       ];
 
       for (const method of methods) {
         try {
           const result = await method();
-          if (result && result.content && result.content.length > 20) {
+          if (result && result.content && result.content.length > 20 && !result.content.includes('Content from @')) {
             console.log('Successfully extracted real post data:', result);
             return result;
           }
@@ -63,7 +63,7 @@ export class XPostFetcher {
     // Enhanced fallback with more realistic preview
     const fallbackData: XPostData = {
       url,
-      content: `Unable to fetch full content. Please view the original post at ${url}`,
+      content: `Unable to fetch full content from this X post. Please check the original link: ${url}`,
       authorName: this.generateDisplayName(parsed.username),
       authorUsername: parsed.username,
       authorAvatar: `https://ui-avatars.com/api/?name=${parsed.username}&background=1DA1F2&color=fff&size=48`,
@@ -78,49 +78,77 @@ export class XPostFetcher {
     return fallbackData;
   }
 
-  private static async fetchViaAllOrigins(url: string): Promise<XPostData | null> {
-    const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
-    const data = await response.json();
-    
-    if (data.contents) {
-      const parsed = this.parseXUrl(url);
-      if (!parsed) return null;
+  private static async fetchViaOEmbed(url: string): Promise<XPostData | null> {
+    try {
+      // Try Twitter's oEmbed API first
+      const oembedUrl = `https://publish.twitter.com/oembed?url=${encodeURIComponent(url)}`;
+      const response = await fetch(oembedUrl);
       
-      return this.extractPostDataFromHTML(data.contents, parsed, url);
+      if (response.ok) {
+        const data = await response.json();
+        const parsed = this.parseXUrl(url);
+        if (!parsed) return null;
+
+        // Extract content from oEmbed HTML
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = data.html;
+        const tweetText = tempDiv.querySelector('p')?.textContent || '';
+        
+        if (tweetText && tweetText.length > 5) {
+          return {
+            url,
+            content: this.cleanExtractedText(tweetText),
+            authorName: data.author_name || this.generateDisplayName(parsed.username),
+            authorUsername: parsed.username,
+            authorAvatar: `https://ui-avatars.com/api/?name=${parsed.username}&background=1DA1F2&color=fff&size=48`,
+            mediaUrls: [],
+            likesCount: 0,
+            retweetsCount: 0,
+            repliesCount: 0,
+            createdAt: new Date().toISOString()
+          };
+        }
+      }
+    } catch (error) {
+      console.warn('oEmbed fetch failed:', error);
     }
     return null;
   }
 
-  private static async fetchViaAlternateProxy(url: string): Promise<XPostData | null> {
+  private static async fetchViaProxy(url: string): Promise<XPostData | null> {
     try {
-      // Try with a different proxy service
-      const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
-      const html = await response.text();
+      // Use CORS proxy to fetch the page
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+      const response = await fetch(proxyUrl);
+      const data = await response.json();
       
-      const parsed = this.parseXUrl(url);
-      if (!parsed) return null;
-      
-      return this.extractPostDataFromHTML(html, parsed, url);
+      if (data.contents) {
+        const parsed = this.parseXUrl(url);
+        if (!parsed) return null;
+        
+        return this.extractFromHTML(data.contents, parsed, url);
+      }
     } catch (error) {
-      console.warn('Alternate proxy failed:', error);
-      return null;
+      console.warn('Proxy fetch failed:', error);
     }
+    return null;
   }
 
-  private static async fetchDirectMetadata(url: string): Promise<XPostData | null> {
+  private static async fetchViaMetaTags(url: string): Promise<XPostData | null> {
     try {
-      // Try to fetch just the meta tags using a meta tag extraction service
-      const response = await fetch(`https://jsonlink.io/api/extract?url=${encodeURIComponent(url)}`);
+      // Try to get meta tags using a different service
+      const metaUrl = `https://jsonlink.io/api/extract?url=${encodeURIComponent(url)}`;
+      const response = await fetch(metaUrl);
       const data = await response.json();
       
       const parsed = this.parseXUrl(url);
       if (!parsed) return null;
 
-      if (data.title || data.description) {
+      if (data.description && data.description.length > 10) {
         return {
           url,
-          content: data.description || data.title || 'Content preview unavailable',
-          authorName: this.extractAuthorFromTitle(data.title, parsed.username),
+          content: this.cleanExtractedText(data.description),
+          authorName: data.title ? this.extractAuthorFromTitle(data.title, parsed.username) : this.generateDisplayName(parsed.username),
           authorUsername: parsed.username,
           authorAvatar: data.images?.[0] || `https://ui-avatars.com/api/?name=${parsed.username}&background=1DA1F2&color=fff&size=48`,
           mediaUrls: data.images ? [data.images[0]] : [],
@@ -131,118 +159,101 @@ export class XPostFetcher {
         };
       }
     } catch (error) {
-      console.warn('Direct metadata fetch failed:', error);
+      console.warn('Meta tags fetch failed:', error);
     }
     return null;
   }
 
-  private static extractPostDataFromHTML(html: string, parsed: { username: string; postId: string }, url: string): XPostData | null {
+  private static extractFromHTML(html: string, parsed: { username: string; postId: string }, url: string): XPostData | null {
     try {
-      // Extract Open Graph and Twitter Card meta tags with improved patterns
-      const titleMatch = html.match(/<meta property="og:title" content="([^"]*)"/) || 
-                        html.match(/<meta name="twitter:title" content="([^"]*)"/) ||
-                        html.match(/<title>([^<]*)<\/title>/);
-      
-      const descriptionMatch = html.match(/<meta property="og:description" content="([^"]*)"/) ||
-                              html.match(/<meta name="twitter:description" content="([^"]*)"/) ||
-                              html.match(/<meta name="description" content="([^"]*)"/);
-      
-      const imageMatch = html.match(/<meta property="og:image" content="([^"]*)"/) ||
-                        html.match(/<meta name="twitter:image" content="([^"]*)"/);
+      // Enhanced HTML content extraction
+      const patterns = [
+        // Twitter card meta tags
+        /<meta property="twitter:description" content="([^"]*)"[^>]*>/i,
+        /<meta name="twitter:description" content="([^"]*)"[^>]*>/i,
+        // Open Graph tags
+        /<meta property="og:description" content="([^"]*)"[^>]*>/i,
+        // Standard meta description
+        /<meta name="description" content="([^"]*)"[^>]*>/i,
+        // Try to find tweet text in JSON-LD
+        /"text"\s*:\s*"([^"]*)"[^}]*"author"/i,
+        // Try to extract from title patterns
+        /<title>([^<]*)<\/title>/i
+      ];
 
-      // Enhanced content extraction
       let content = '';
-      if (descriptionMatch && descriptionMatch[1]) {
-        content = this.cleanExtractedText(descriptionMatch[1]);
-      } else if (titleMatch && titleMatch[1]) {
-        const title = titleMatch[1];
-        // Try to extract tweet text from various title formats
-        const patterns = [
-          /^.*?on X: "(.+)"$/,
-          /^.*?: "(.+)"$/,
-          /^(.+) \/ X$/,
-          /^(.+) - @\w+/
-        ];
-        
-        for (const pattern of patterns) {
-          const match = title.match(pattern);
-          if (match) {
-            content = this.cleanExtractedText(match[1]);
+      let authorName = '';
+      let mediaUrl = '';
+
+      // Extract content
+      for (const pattern of patterns) {
+        const match = html.match(pattern);
+        if (match && match[1] && match[1].length > 10) {
+          content = this.cleanExtractedText(match[1]);
+          if (content && !content.includes('Sign up') && !content.includes('Log in')) {
             break;
           }
         }
-        
-        if (!content) {
-          content = this.cleanExtractedText(title);
-        }
       }
 
-      // If still no content, try to find it in the HTML body
-      if (!content || content.length < 10) {
-        const bodyContentMatch = html.match(/<meta name="twitter:description" content="([^"]+)"/);
-        if (bodyContentMatch) {
-          content = this.cleanExtractedText(bodyContentMatch[1]);
-        }
+      // Extract author name from title
+      const titleMatch = html.match(/<title>([^<]*)<\/title>/i);
+      if (titleMatch) {
+        authorName = this.extractAuthorFromTitle(titleMatch[1], parsed.username);
       }
 
-      if (!content || content.length < 5) {
-        content = `Content from @${parsed.username} - Full content available at ${url}`;
+      // Extract media
+      const imageMatch = html.match(/<meta property="og:image" content="([^"]*)"[^>]*>/i) ||
+                        html.match(/<meta name="twitter:image" content="([^"]*)"[^>]*>/i);
+      if (imageMatch) {
+        mediaUrl = imageMatch[1];
       }
 
-      const authorName = this.extractAuthorName(html, parsed.username);
-      const mediaUrls = imageMatch && imageMatch[1] ? [imageMatch[1]] : [];
-
-      return {
-        url,
-        content,
-        authorName,
-        authorUsername: parsed.username,
-        authorAvatar: `https://ui-avatars.com/api/?name=${parsed.username}&background=1DA1F2&color=fff&size=48`,
-        mediaUrls,
-        likesCount: 0,
-        retweetsCount: 0,
-        repliesCount: 0,
-        createdAt: new Date().toISOString()
-      };
-
+      // Only return if we got meaningful content
+      if (content && content.length > 20 && !content.toLowerCase().includes('sign up')) {
+        return {
+          url,
+          content,
+          authorName: authorName || this.generateDisplayName(parsed.username),
+          authorUsername: parsed.username,
+          authorAvatar: `https://ui-avatars.com/api/?name=${parsed.username}&background=1DA1F2&color=fff&size=48`,
+          mediaUrls: mediaUrl ? [mediaUrl] : [],
+          likesCount: 0,
+          retweetsCount: 0,
+          repliesCount: 0,
+          createdAt: new Date().toISOString()
+        };
+      }
     } catch (error) {
-      console.error('Error extracting post data from HTML:', error);
-      return null;
+      console.error('Error extracting from HTML:', error);
     }
-  }
-
-  private static extractAuthorName(html: string, username: string): string {
-    // Try to extract the display name from various meta tags
-    const patterns = [
-      /<meta name="twitter:creator" content="@?([^"]*)"/, 
-      /<meta property="og:site_name" content="([^"]*)"/, 
-      new RegExp(`<title>([^(]*?)\\s*\\(.*?@${username}`, 'i'),
-      new RegExp(`<meta property="og:title" content="([^(]*?)\\s*\\(.*?@${username}`, 'i')
-    ];
-    
-    for (const pattern of patterns) {
-      const match = html.match(pattern);
-      if (match && match[1] && match[1].trim()) {
-        return match[1].trim();
-      }
-    }
-    
-    return this.generateDisplayName(username);
+    return null;
   }
 
   private static extractAuthorFromTitle(title: string, username: string): string {
     if (!title) return this.generateDisplayName(username);
     
+    // Common X/Twitter title patterns
     const patterns = [
-      new RegExp(`^([^(]+)\\s*\\(.*?@${username}`, 'i'),
-      /^([^-]+)\s*-\s*@/,
-      /^([^/]+)\s*\//
+      // "Name on X: "Tweet text""
+      /^([^"(]+?)\s+on\s+X:/i,
+      // "Name (@username): "Tweet text""
+      /^([^"(]+?)\s*\([^)]*@[^)]*\):/i,
+      // "Name - @username"
+      /^([^-]+?)\s*-\s*@/i,
+      // "Name / X"
+      /^([^/]+?)\s*\/\s*X/i,
+      // Just get the first part before any separator
+      /^([^-|(]+)/
     ];
     
     for (const pattern of patterns) {
       const match = title.match(pattern);
-      if (match && match[1]) {
-        return match[1].trim();
+      if (match && match[1] && match[1].trim()) {
+        const name = match[1].trim();
+        if (name.length > 0 && name.length < 50) {
+          return name;
+        }
       }
     }
     
@@ -250,7 +261,7 @@ export class XPostFetcher {
   }
 
   private static cleanExtractedText(text: string): string {
-    // Clean up extracted text by decoding HTML entities and removing extra whitespace
+    // Clean up extracted text
     return text
       .replace(/&quot;/g, '"')
       .replace(/&amp;/g, '&')
@@ -261,26 +272,19 @@ export class XPostFetcher {
       .replace(/&hellip;/g, '...')
       .replace(/&nbsp;/g, ' ')
       .replace(/\s+/g, ' ')
+      .replace(/^["']|["']$/g, '') // Remove surrounding quotes
       .trim();
   }
 
   private static generateDisplayName(username: string): string {
-    // Generate more realistic display names
-    const patterns = [
-      () => username.charAt(0).toUpperCase() + username.slice(1),
-      () => {
-        const first = username.slice(0, Math.max(3, username.length / 2));
-        const last = username.slice(-Math.max(2, username.length / 3));
-        return `${first.charAt(0).toUpperCase() + first.slice(1)} ${last.charAt(0).toUpperCase() + last.slice(1)}`;
-      },
-      () => {
-        // For names with numbers, clean them up
-        const cleaned = username.replace(/\d+/g, '');
-        return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-      }
-    ];
+    // Generate more realistic display names based on username
+    const cleanUsername = username.replace(/[_\-0-9]+/g, '');
     
-    const pattern = patterns[Math.floor(Math.random() * patterns.length)];
-    return pattern();
+    if (cleanUsername.length > 2) {
+      return cleanUsername.charAt(0).toUpperCase() + cleanUsername.slice(1);
+    }
+    
+    // Fallback to capitalizing the original username
+    return username.charAt(0).toUpperCase() + username.slice(1);
   }
 }
