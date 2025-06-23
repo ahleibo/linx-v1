@@ -4,9 +4,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Search, User, Sparkles } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { useEffect } from 'react';
 
 const Index = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Redirect authenticated users to home
+  useEffect(() => {
+    if (user) {
+      navigate('/home');
+    }
+  }, [user, navigate]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -32,19 +42,19 @@ const Index = () => {
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
               <Button 
-                onClick={() => navigate('/home')}
+                onClick={() => navigate('/auth')}
                 size="lg"
                 className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 text-lg font-semibold rounded-full transition-all duration-300 hover:scale-105"
               >
                 Get Started
               </Button>
               <Button 
-                onClick={() => navigate('/explore')}
+                onClick={() => navigate('/auth')}
                 variant="outline"
                 size="lg"
                 className="border-slate-600 text-white hover:bg-slate-800 px-8 py-4 text-lg font-semibold rounded-full transition-all duration-300"
               >
-                Explore Topics
+                Sign In
               </Button>
             </div>
           </div>
@@ -107,7 +117,7 @@ const Index = () => {
             Join thousands of users who've transformed how they manage their digital knowledge.
           </p>
           <Button 
-            onClick={() => navigate('/home')}
+            onClick={() => navigate('/auth')}
             size="lg"
             className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 text-lg font-semibold rounded-full transition-all duration-300 hover:scale-105"
           >

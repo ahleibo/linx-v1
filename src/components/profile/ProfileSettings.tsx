@@ -81,7 +81,7 @@ export const ProfileSettings = () => {
 
   const handleLogout = async () => {
     await signOut();
-    navigate('/');
+    navigate('/auth');
   };
 
   return (
