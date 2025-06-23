@@ -4,9 +4,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Heart, MessageCircle, Repeat2, Share, Bookmark, Eye, X, ShieldCheck } from 'lucide-react';
+import { Heart, MessageCircle, Repeat2, Share, X, ShieldCheck } from 'lucide-react';
 import { EnhancedXPostData } from '@/types/twitter';
-import { TwitterApiService } from '@/services/twitterApiService';
 
 interface EnhancedTweetCardProps {
   post: EnhancedXPostData;
@@ -28,12 +27,16 @@ export const EnhancedTweetCard = ({
   };
 
   const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+      });
+    } catch (error) {
+      return 'Recently';
+    }
   };
 
   const getVerificationIcon = () => {
@@ -53,7 +56,24 @@ export const EnhancedTweetCard = ({
   };
 
   const renderMedia = () => {
-    if (!post.media || post.media.length === 0) return null;
+    if (!post.media || post.media.length === 0) {
+      // Check for legacy mediaUrls
+      if (post.mediaUrls && post.mediaUrls.length > 0) {
+        return (
+          <div className="mt-3 rounded-2xl overflow-hidden">
+            {post.mediaUrls.map((url, index) => (
+              <img
+                key={index}
+                src={url}
+                alt={`Media ${index + 1}`}
+                className="w-full max-h-96 object-cover"
+              />
+            ))}
+          </div>
+        );
+      }
+      return null;
+    }
 
     return (
       <div className="mt-3 rounded-2xl overflow-hidden">
@@ -83,7 +103,7 @@ export const EnhancedTweetCard = ({
         ) : (
           <div className="grid grid-cols-2 gap-1">
             {post.media.slice(0, 4).map((media, index) => (
-              <div key={media.media_key} className="relative aspect-square">
+              <div key={media.media_key || index} className="relative aspect-square">
                 <img
                   src={media.type === 'photo' ? media.url : media.preview_image_url}
                   alt={media.alt_text || `Media ${index + 1}`}
@@ -109,38 +129,18 @@ export const EnhancedTweetCard = ({
       <div className="flex items-center space-x-6">
         <div className="flex items-center space-x-1 hover:text-red-500 cursor-pointer transition-colors">
           <Heart className="w-4 h-4" />
-          <span className="text-sm">{formatNumber(post.likesCount)}</span>
+          <span className="text-sm">{formatNumber(post.likesCount || 0)}</span>
         </div>
         
         <div className="flex items-center space-x-1 hover:text-green-500 cursor-pointer transition-colors">
           <Repeat2 className="w-4 h-4" />
-          <span className="text-sm">{formatNumber(post.retweetsCount)}</span>
+          <span className="text-sm">{formatNumber(post.retweetsCount || 0)}</span>
         </div>
         
         <div className="flex items-center space-x-1 hover:text-blue-500 cursor-pointer transition-colors">
           <MessageCircle className="w-4 h-4" />
-          <span className="text-sm">{formatNumber(post.repliesCount)}</span>
+          <span className="text-sm">{formatNumber(post.repliesCount || 0)}</span>
         </div>
-        
-        {post.quotesCount !== undefined && post.quotesCount > 0 && (
-          <div className="flex items-center space-x-1 text-gray-500">
-            <span className="text-sm">{formatNumber(post.quotesCount)} quotes</span>
-          </div>
-        )}
-        
-        {post.bookmarksCount !== undefined && post.bookmarksCount > 0 && (
-          <div className="flex items-center space-x-1 hover:text-blue-500 cursor-pointer transition-colors">
-            <Bookmark className="w-4 h-4" />
-            <span className="text-sm">{formatNumber(post.bookmarksCount)}</span>
-          </div>
-        )}
-        
-        {post.impressionsCount !== undefined && post.impressionsCount > 0 && (
-          <div className="flex items-center space-x-1 text-gray-500">
-            <Eye className="w-4 h-4" />
-            <span className="text-sm">{formatNumber(post.impressionsCount)}</span>
-          </div>
-        )}
       </div>
       
       <div className="flex items-center space-x-2">
@@ -159,7 +159,7 @@ export const EnhancedTweetCard = ({
               alt={`@${post.authorUsername}`} 
             />
             <AvatarFallback className="bg-gray-700 text-white">
-              {post.authorName.charAt(0).toUpperCase()}
+              {(post.authorName || post.authorUsername || 'U').charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           
@@ -167,7 +167,7 @@ export const EnhancedTweetCard = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-1 min-w-0">
                 <h3 className="text-white font-semibold truncate">
-                  {post.authorName}
+                  {post.authorName || post.authorUsername}
                 </h3>
                 {getVerificationIcon()}
                 <span className="text-gray-500 truncate">
@@ -191,23 +191,11 @@ export const EnhancedTweetCard = ({
               )}
             </div>
             
-            <div 
-              className="text-white mt-2 leading-relaxed"
-              dangerouslySetInnerHTML={{
-                __html: TwitterApiService.formatTweetText(post.content, post.entities)
-              }}
-            />
+            <div className="text-white mt-2 leading-relaxed">
+              {post.content || 'No content available'}
+            </div>
             
             {renderMedia()}
-            
-            {post.referencedTweets && post.referencedTweets.length > 0 && (
-              <div className="mt-3 p-3 border border-gray-700 rounded-lg">
-                <div className="text-gray-400 text-sm mb-1">
-                  {post.referencedTweets[0].type === 'quoted' ? 'Quote Tweet' : 
-                   post.referencedTweets[0].type === 'replied_to' ? 'Replying to' : 'Referenced Tweet'}
-                </div>
-              </div>
-            )}
             
             {post.lang && post.lang !== 'en' && (
               <Badge variant="secondary" className="mt-2 text-xs">

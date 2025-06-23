@@ -44,12 +44,14 @@ export const EnhancedUrlInputSection = ({
       console.log('Fetching tweet data for:', url);
       const postData = await TwitterApiService.fetchTweetData(url);
       
+      // Always add the post data, even if it's basic fallback data
       if (postData) {
         onAddPost(postData);
         setUrl('');
-        setSuccess('Tweet preview loaded successfully!');
+        setSuccess('Tweet loaded successfully! Preview it below.');
         setTimeout(() => setSuccess(null), 3000);
       } else {
+        // This should never happen now since we always return fallback data
         setError('Failed to load tweet data. Please check the URL and try again.');
       }
     } catch (err) {
@@ -65,11 +67,6 @@ export const EnhancedUrlInputSection = ({
     setUrl(newUrl);
     setError(null);
     setSuccess(null);
-    
-    // Real-time validation feedback
-    if (newUrl && !validateUrl(newUrl)) {
-      setError('Invalid Twitter/X URL format');
-    }
   };
 
   const getSupportedFormats = () => [
@@ -86,7 +83,7 @@ export const EnhancedUrlInputSection = ({
           Add Twitter/X Posts
         </h3>
         <p className="text-gray-400 text-sm mb-4">
-          Paste Twitter or X URLs to preview and import posts with full metadata, media, and engagement metrics.
+          Paste Twitter or X URLs to preview and import posts. Even if we can't fetch full details, we'll create a basic preview.
         </p>
       </div>
 
@@ -102,7 +99,7 @@ export const EnhancedUrlInputSection = ({
           />
           <Button
             type="submit"
-            disabled={!url.trim() || isLoading || isFetching || (url && !validateUrl(url))}
+            disabled={!url.trim() || isLoading || isFetching || !validateUrl(url)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6"
           >
             {isFetching ? (
@@ -112,8 +109,8 @@ export const EnhancedUrlInputSection = ({
               </>
             ) : (
               <>
-                <Plus className="w-4 h-4 mr-2" />
-                Preview
+                <Plus className="w-4 w-4 mr-2" />
+                Add Post
               </>
             )}
           </Button>

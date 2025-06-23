@@ -40,8 +40,23 @@ export class TwitterApiService {
       throw new Error('Invalid Twitter URL format');
     }
 
+    // Always create a basic fallback post first
+    const fallbackPost: EnhancedXPostData = {
+      id: parsed.tweetId,
+      url: url,
+      content: `Check out this post from @${parsed.username}`,
+      authorName: parsed.username,
+      authorUsername: parsed.username,
+      authorAvatar: `https://unavatar.io/x/${parsed.username}`,
+      mediaUrls: [],
+      likesCount: 0,
+      retweetsCount: 0,
+      repliesCount: 0,
+      createdAt: new Date().toISOString(),
+    };
+
     try {
-      // Call our Edge Function that handles Twitter API integration
+      // Try to get enhanced data from our Edge Function
       const response = await fetch('/functions/v1/fetch-tweet', {
         method: 'POST',
         headers: {
@@ -53,26 +68,22 @@ export class TwitterApiService {
         })
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch tweet: ${response.statusText}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && !data.error) {
+          return this.transformTwitterApiResponse(data, url);
+        }
       }
-
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      return this.transformTwitterApiResponse(data, url);
     } catch (error) {
-      console.error('Error fetching tweet:', error);
-      
-      // Fallback to existing XPostFetcher for basic data
+      console.warn('Edge function failed:', error);
+    }
+
+    try {
+      // Try fallback XPostFetcher
       const { XPostFetcher } = await import('./xPostFetcher');
       const fallbackData = await XPostFetcher.fetchPostData(url);
       
-      if (fallbackData) {
-        // Transform XPostData to EnhancedXPostData with required id field
+      if (fallbackData && fallbackData.content && fallbackData.content.length > 10) {
         return {
           id: parsed.tweetId,
           url: fallbackData.url,
@@ -87,9 +98,13 @@ export class TwitterApiService {
           createdAt: fallbackData.createdAt,
         };
       }
-      
-      return null;
+    } catch (error) {
+      console.warn('Fallback fetcher failed:', error);
     }
+    
+    // Always return the basic fallback post so the card can render
+    console.log('Returning fallback post data:', fallbackPost);
+    return fallbackPost;
   }
 
   // Transform Twitter API v2 response to our format
