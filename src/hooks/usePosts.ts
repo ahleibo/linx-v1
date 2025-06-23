@@ -13,9 +13,7 @@ export function usePosts() {
   const {
     data: posts = [],
     isLoading,
-    error,
-    fetchNextPage,
-    hasNextPage
+    error
   } = useQuery({
     queryKey: ['posts'],
     queryFn: () => postService.getUserPosts(),
@@ -72,8 +70,6 @@ export function usePosts() {
     searchQuery,
     setSearchQuery,
     chatMutation,
-    savePostMutation,
-    fetchNextPage,
-    hasNextPage
+    savePostMutation
   };
 }
