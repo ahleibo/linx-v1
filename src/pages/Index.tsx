@@ -1,37 +1,58 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
+import Dashboard from './Dashboard';
 
 const Index = () => {
+  const { user, loading, signUp, signIn, signInWithProvider } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Show dashboard if user is authenticated
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Dashboard />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    if (isSubmitting) return;
     
-    // Simulate authentication delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    setIsSubmitting(true);
     
-    console.log(isLogin ? 'Login attempt' : 'Signup attempt', {
-      email,
-      password,
-      ...(isLogin ? {} : { fullName })
-    });
-    
-    setIsLoading(false);
+    try {
+      if (isLogin) {
+        await signIn(email, password);
+      } else {
+        await signUp(email, password, fullName);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSSOLogin = (provider: string) => {
-    console.log(`SSO login with ${provider}`);
-    // SSO integration would be implemented here
+    if (provider === 'google' || provider === 'twitter') {
+      signInWithProvider(provider);
+    } else {
+      // For Microsoft/Outlook, we'll show a placeholder for now
+      console.log(`SSO login with ${provider} - not yet configured`);
+    }
   };
 
   return (
@@ -126,9 +147,9 @@ const Index = () => {
             <Button
               type="submit"
               className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
-              disabled={isLoading}
+              disabled={isSubmitting}
             >
-              {isLoading ? (
+              {isSubmitting ? (
                 <div className="flex items-center space-x-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   <span>{isLogin ? 'Signing in...' : 'Creating account...'}</span>
