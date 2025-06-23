@@ -56,24 +56,26 @@ const Profile = () => {
       <div className="p-4 space-y-8">
         {/* User Info Section */}
         <div className="flex flex-col items-center space-y-4">
-          <Avatar className="w-24 h-24 border-4 border-slate-700">
-            <AvatarImage src={user?.user_metadata?.avatar_url} />
-            <AvatarFallback className="bg-blue-500 text-white text-xl font-bold">
-              {user?.user_metadata?.full_name 
-                ? getUserInitials(user.user_metadata.full_name)
-                : 'LX'
-              }
-            </AvatarFallback>
-          </Avatar>
-          
-          <div className="flex flex-col justify-start items-center text-center space-y-1">
-            <h2 className="text-2xl font-bold">
-              {user?.user_metadata?.full_name || 'LiNX User'}
-            </h2>
-            <p className="text-slate-400">@{user?.email?.split('@')[0] || 'user'}</p>
-            <p className="text-sm text-slate-300 mt-2 max-w-xs">
-              Curating knowledge, one post at a time. Building connections through shared insights.
-            </p>
+          <div className="flex flex-row my-0">
+            <Avatar className="w-24 h-24 border-4 border-slate-700">
+              <AvatarImage src={user?.user_metadata?.avatar_url} />
+              <AvatarFallback className="bg-blue-500 text-white text-xl font-bold">
+                {user?.user_metadata?.full_name 
+                  ? getUserInitials(user.user_metadata.full_name)
+                  : 'LX'
+                }
+              </AvatarFallback>
+            </Avatar>
+            
+            <div className="flex flex-col justify-start items-center text-center space-y-1">
+              <h2 className="text-2xl font-bold">
+                {user?.user_metadata?.full_name || 'LiNX User'}
+              </h2>
+              <p className="text-slate-400">@{user?.email?.split('@')[0] || 'user'}</p>
+              <p className="text-sm text-slate-300 mt-2 max-w-xs">
+                Curating knowledge, one post at a time. Building connections through shared insights.
+              </p>
+            </div>
           </div>
         </div>
 
