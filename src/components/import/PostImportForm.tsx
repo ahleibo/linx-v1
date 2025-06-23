@@ -1,145 +1,70 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { postImportService, type XPostData } from '@/services/postImportService';
-import { UrlInputSection } from './UrlInputSection';
+import { EnhancedUrlInputSection } from './EnhancedUrlInputSection';
 import { PostPreviewSection } from './PostPreviewSection';
 import { ImportActions } from './ImportActions';
-import { useAuth } from '@/hooks/useAuth';
+import { type EnhancedXPostData } from '@/types/twitter';
 
-interface PostImportFormProps {
-  onSuccess?: () => void;
-  onCancel?: () => void;
-}
+export const PostImportForm = () => {
+  const [posts, setPosts] = useState<EnhancedXPostData[]>([]);
+  const [isImporting, setIsImporting] = useState(false);
 
-export const PostImportForm = ({ onSuccess, onCancel }: PostImportFormProps) => {
-  const { toast } = useToast();
-  const { user, signOut } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [fetchedPosts, setFetchedPosts] = useState<XPostData[]>([]);
-
-  const handlePostFetched = (postData: XPostData) => {
-    const exists = fetchedPosts.some(post => post.url === postData.url);
-    if (!exists) {
-      setFetchedPosts(prev => [...prev, postData]);
-    } else {
-      toast({
-        title: "Post already added",
-        description: "This post is already in your import list.",
-        variant: "destructive"
-      });
+  const handleAddPost = (post: EnhancedXPostData) => {
+    // Check for duplicates
+    const isDuplicate = posts.some(existingPost => 
+      existingPost.id === post.id || existingPost.url === post.url
+    );
+    
+    if (isDuplicate) {
+      console.log('Post already added:', post.url);
+      return;
     }
+
+    setPosts(prev => [...prev, post]);
   };
 
   const handleRemovePost = (index: number) => {
-    setFetchedPosts(prev => prev.filter((_, i) => i !== index));
+    setPosts(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleAuthError = async () => {
-    await signOut();
-    toast({
-      title: "Session Expired",
-      description: "Your session has expired. Please sign in again to continue.",
-      variant: "destructive"
-    });
+  const handleClearAll = () => {
+    setPosts([]);
   };
 
   const handleImport = async () => {
-    if (fetchedPosts.length === 0) {
-      toast({
-        title: "No posts to import",
-        description: "Please fetch at least one post before importing.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to import posts.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsLoading(true);
-
+    if (posts.length === 0) return;
+    
+    setIsImporting(true);
     try {
-      console.log('Starting import process for user:', user.id);
-      const results = await postImportService.importMultiplePosts(fetchedPosts);
-      const successful = results.filter(r => r.success).length;
-      const failed = results.filter(r => !r.success).length;
-
-      if (successful > 0) {
-        toast({
-          title: "Posts imported successfully",
-          description: `${successful} post${successful > 1 ? 's' : ''} imported${failed > 0 ? `, ${failed} failed` : ''}.`
-        });
-        setFetchedPosts([]);
-        onSuccess?.();
-      } else {
-        // Check if any errors are auth-related
-        const authErrors = results.filter(r => 
-          !r.success && 
-          (r.error?.includes('session') || r.error?.includes('auth') || r.error?.includes('sign'))
-        );
-        
-        if (authErrors.length > 0) {
-          handleAuthError();
-        } else {
-          toast({
-            title: "Import failed",
-            description: "No posts could be imported. Please try again.",
-            variant: "destructive"
-          });
-        }
-      }
+      // Import logic will be handled by ImportActions component
+      console.log('Importing posts:', posts);
     } catch (error) {
-      console.error('Import error:', error);
-      
-      if (error.message?.includes('session') || 
-          error.message?.includes('auth') || 
-          error.message?.includes('sign')) {
-        handleAuthError();
-      } else {
-        toast({
-          title: "Import error",
-          description: "Failed to import posts. Please try again.",
-          variant: "destructive"
-        });
-      }
+      console.error('Import failed:', error);
     } finally {
-      setIsLoading(false);
+      setIsImporting(false);
     }
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto bg-slate-800/30 border-slate-700">
-      <CardHeader>
-        <CardTitle className="text-white">Import X Posts</CardTitle>
-        {user && (
-          <p className="text-sm text-slate-400">
-            Importing as: {user.email}
-          </p>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <UrlInputSection onPostFetched={handlePostFetched} />
-        
-        <PostPreviewSection 
-          posts={fetchedPosts}
-          onRemovePost={handleRemovePost}
-        />
-
+    <div className="space-y-6">
+      <EnhancedUrlInputSection
+        onAddPost={handleAddPost}
+        isLoading={isImporting}
+      />
+      
+      <PostPreviewSection
+        posts={posts}
+        onRemovePost={handleRemovePost}
+      />
+      
+      {posts.length > 0 && (
         <ImportActions
-          isLoading={isLoading}
-          postsCount={fetchedPosts.length}
-          onImport={handleImport}
-          onCancel={onCancel}
+          posts={posts}
+          onClearAll={handleClearAll}
+          onImportComplete={() => setPosts([])}
+          disabled={isImporting}
         />
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 };

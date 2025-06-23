@@ -75,6 +75,39 @@ export type Database = {
         }
         Relationships: []
       }
+      import_logs: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          status: string | null
+          tweet_data: Json | null
+          twitter_url: string
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          status?: string | null
+          tweet_data?: Json | null
+          twitter_url: string
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          status?: string | null
+          tweet_data?: Json | null
+          twitter_url?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       post_topics: {
         Row: {
           confidence_score: number | null
@@ -123,13 +156,26 @@ export type Database = {
           author_name: string
           author_username: string
           content: string
+          context_annotations: Json | null
+          conversation_id: string | null
           created_at: string
+          entities: Json | null
           id: string
+          import_source: string | null
+          import_status: string | null
+          in_reply_to_user_id: string | null
+          lang: string | null
           likes_count: number | null
           media_urls: string[] | null
+          possibly_sensitive: boolean | null
+          public_metrics: Json | null
+          referenced_tweets: Json | null
           replies_count: number | null
           retweets_count: number | null
           saved_at: string
+          source: string | null
+          tweet_type: string | null
+          twitter_author_id: string | null
           user_id: string
           x_post_id: string | null
           x_url: string | null
@@ -139,13 +185,26 @@ export type Database = {
           author_name: string
           author_username: string
           content: string
+          context_annotations?: Json | null
+          conversation_id?: string | null
           created_at: string
+          entities?: Json | null
           id?: string
+          import_source?: string | null
+          import_status?: string | null
+          in_reply_to_user_id?: string | null
+          lang?: string | null
           likes_count?: number | null
           media_urls?: string[] | null
+          possibly_sensitive?: boolean | null
+          public_metrics?: Json | null
+          referenced_tweets?: Json | null
           replies_count?: number | null
           retweets_count?: number | null
           saved_at?: string
+          source?: string | null
+          tweet_type?: string | null
+          twitter_author_id?: string | null
           user_id: string
           x_post_id?: string | null
           x_url?: string | null
@@ -155,18 +214,39 @@ export type Database = {
           author_name?: string
           author_username?: string
           content?: string
+          context_annotations?: Json | null
+          conversation_id?: string | null
           created_at?: string
+          entities?: Json | null
           id?: string
+          import_source?: string | null
+          import_status?: string | null
+          in_reply_to_user_id?: string | null
+          lang?: string | null
           likes_count?: number | null
           media_urls?: string[] | null
+          possibly_sensitive?: boolean | null
+          public_metrics?: Json | null
+          referenced_tweets?: Json | null
           replies_count?: number | null
           retweets_count?: number | null
           saved_at?: string
+          source?: string | null
+          tweet_type?: string | null
+          twitter_author_id?: string | null
           user_id?: string
           x_post_id?: string | null
           x_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "posts_twitter_author_id_fkey"
+            columns: ["twitter_author_id"]
+            isOneToOne: false
+            referencedRelation: "twitter_authors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -216,6 +296,224 @@ export type Database = {
         }
         Relationships: []
       }
+      tweet_hashtags: {
+        Row: {
+          created_at: string | null
+          end_pos: number | null
+          id: string
+          post_id: string | null
+          start_pos: number | null
+          tag: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_pos?: number | null
+          id?: string
+          post_id?: string | null
+          start_pos?: number | null
+          tag: string
+        }
+        Update: {
+          created_at?: string | null
+          end_pos?: number | null
+          id?: string
+          post_id?: string | null
+          start_pos?: number | null
+          tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tweet_hashtags_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tweet_media: {
+        Row: {
+          alt_text: string | null
+          created_at: string | null
+          duration_ms: number | null
+          height: number | null
+          id: string
+          media_key: string | null
+          post_id: string | null
+          preview_image_url: string | null
+          public_metrics: Json | null
+          type: string
+          url: string | null
+          width: number | null
+        }
+        Insert: {
+          alt_text?: string | null
+          created_at?: string | null
+          duration_ms?: number | null
+          height?: number | null
+          id?: string
+          media_key?: string | null
+          post_id?: string | null
+          preview_image_url?: string | null
+          public_metrics?: Json | null
+          type: string
+          url?: string | null
+          width?: number | null
+        }
+        Update: {
+          alt_text?: string | null
+          created_at?: string | null
+          duration_ms?: number | null
+          height?: number | null
+          id?: string
+          media_key?: string | null
+          post_id?: string | null
+          preview_image_url?: string | null
+          public_metrics?: Json | null
+          type?: string
+          url?: string | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tweet_media_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tweet_mentions: {
+        Row: {
+          created_at: string | null
+          end_pos: number | null
+          id: string
+          mentioned_user_id: string | null
+          post_id: string | null
+          start_pos: number | null
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_pos?: number | null
+          id?: string
+          mentioned_user_id?: string | null
+          post_id?: string | null
+          start_pos?: number | null
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          end_pos?: number | null
+          id?: string
+          mentioned_user_id?: string | null
+          post_id?: string | null
+          start_pos?: number | null
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tweet_mentions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tweet_urls: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          display_url: string | null
+          end_pos: number | null
+          expanded_url: string | null
+          id: string
+          post_id: string | null
+          start_pos: number | null
+          title: string | null
+          unwound_url: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          display_url?: string | null
+          end_pos?: number | null
+          expanded_url?: string | null
+          id?: string
+          post_id?: string | null
+          start_pos?: number | null
+          title?: string | null
+          unwound_url?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          display_url?: string | null
+          end_pos?: number | null
+          expanded_url?: string | null
+          id?: string
+          post_id?: string | null
+          start_pos?: number | null
+          title?: string | null
+          unwound_url?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tweet_urls_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      twitter_authors: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          profile_image_url: string | null
+          public_metrics: Json | null
+          twitter_id: string
+          updated_at: string | null
+          username: string
+          verified: boolean | null
+          verified_type: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          profile_image_url?: string | null
+          public_metrics?: Json | null
+          twitter_id: string
+          updated_at?: string | null
+          username: string
+          verified?: boolean | null
+          verified_type?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          profile_image_url?: string | null
+          public_metrics?: Json | null
+          twitter_id?: string
+          updated_at?: string | null
+          username?: string
+          verified?: boolean | null
+          verified_type?: string | null
+        }
+        Relationships: []
+      }
       user_follows: {
         Row: {
           avatar_url: string | null
@@ -251,7 +549,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_complete_tweet_data: {
+        Args: { tweet_id: string }
+        Returns: Json
+      }
+      update_tweet_metrics: {
+        Args: { tweet_id: string; new_metrics: Json }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

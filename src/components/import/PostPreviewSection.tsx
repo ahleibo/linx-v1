@@ -1,10 +1,10 @@
 
 import React from 'react';
-import { TweetCard } from './TweetCard';
-import { type XPostData } from '@/services/postImportService';
+import { EnhancedTweetCard } from './EnhancedTweetCard';
+import { type EnhancedXPostData } from '@/types/twitter';
 
 interface PostPreviewSectionProps {
-  posts: XPostData[];
+  posts: EnhancedXPostData[];
   onRemovePost: (index: number) => void;
 }
 
@@ -21,8 +21,8 @@ export const PostPreviewSection = ({ posts, onRemovePost }: PostPreviewSectionPr
       
       <div className="max-h-96 overflow-y-auto space-y-4">
         {posts.map((post, index) => (
-          <TweetCard
-            key={index}
+          <EnhancedTweetCard
+            key={`${post.id}-${index}`}
             post={post}
             onRemove={() => onRemovePost(index)}
             showRemoveButton={true}
