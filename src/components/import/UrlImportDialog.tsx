@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Link, Loader2, CheckCircle, AlertCircle, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +23,7 @@ export const UrlImportDialog = ({ trigger, onSuccess }: UrlImportDialogProps) =>
   const [isOpen, setIsOpen] = useState(false);
   const [url, setUrl] = useState('');
   const [isImporting, setIsImporting] = useState(false);
-  const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error' | 'existing'>('idle');
   const { toast } = useToast();
 
   const handleImport = async () => {
@@ -43,11 +43,19 @@ export const UrlImportDialog = ({ trigger, onSuccess }: UrlImportDialogProps) =>
       const result = await XPostImportService.importFromUrl(url);
 
       if (result.success) {
-        setImportStatus('success');
-        toast({
-          title: "Import Successful",
-          description: "Post has been imported to your library",
-        });
+        if (result.isExisting) {
+          setImportStatus('existing');
+          toast({
+            title: "Post Already Exists",
+            description: "This post is already in your library",
+          });
+        } else {
+          setImportStatus('success');
+          toast({
+            title: "Import Successful",
+            description: "Post has been imported to your library",
+          });
+        }
         setUrl('');
         onSuccess?.();
         setTimeout(() => {
@@ -126,10 +134,12 @@ export const UrlImportDialog = ({ trigger, onSuccess }: UrlImportDialogProps) =>
           >
             {isImporting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             {importStatus === 'success' && <CheckCircle className="h-4 w-4 mr-2 text-green-400" />}
+            {importStatus === 'existing' && <Info className="h-4 w-4 mr-2 text-blue-400" />}
             {importStatus === 'error' && <AlertCircle className="h-4 w-4 mr-2 text-red-400" />}
             
             {isImporting ? 'Importing...' : 
              importStatus === 'success' ? 'Imported!' :
+             importStatus === 'existing' ? 'Already exists!' :
              importStatus === 'error' ? 'Failed' :
              'Import Post'}
           </Button>

@@ -20,7 +20,7 @@ export class XPostImportService {
   }
 
   // Import a post from X URL
-  static async importFromUrl(url: string): Promise<{ success: boolean; error?: string; post?: any }> {
+  static async importFromUrl(url: string): Promise<{ success: boolean; error?: string; post?: any; isExisting?: boolean }> {
     try {
       const tweetId = this.extractTweetId(url);
       if (!tweetId) {
@@ -59,7 +59,11 @@ export class XPostImportService {
       }
 
       console.log('Post saved successfully:', savedPost);
-      return { success: true, post: savedPost };
+      return { 
+        success: true, 
+        post: savedPost.post,
+        isExisting: savedPost.isExisting 
+      };
     } catch (error: any) {
       console.error('Import error:', error);
       return { success: false, error: error.message || 'Failed to import post. Please try again.' };
@@ -106,7 +110,6 @@ export class XPostImportService {
     };
   }
 
-  // Get import history for current user
   static async getImportHistory() {
     const { data, error } = await supabase
       .from('import_logs')
