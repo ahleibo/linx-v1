@@ -3,6 +3,16 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from '../_shared/cors.ts';
 
+// Generate a random string for PKCE
+function generateCodeVerifier() {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return btoa(String.fromCharCode.apply(null, Array.from(array)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
 serve(async (req) => {
   console.log('Twitter auth function called with method:', req.method);
 
@@ -59,9 +69,24 @@ serve(async (req) => {
       );
     }
 
-    // Generate OAuth URL for Twitter with PKCE
+    // Generate OAuth URL for Twitter with proper PKCE
     const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/twitter-callback`;
     const state = `${user.id}_${Date.now()}`;
+    const codeVerifier = generateCodeVerifier();
+    
+    // Store code verifier in database for later verification
+    const { error: storeError } = await supabase
+      .from('twitter_auth_sessions')
+      .upsert({
+        user_id: user.id,
+        state: state,
+        code_verifier: codeVerifier,
+        created_at: new Date().toISOString()
+      });
+
+    if (storeError) {
+      console.error('Failed to store auth session:', storeError);
+    }
     
     // Twitter OAuth 2.0 with PKCE
     const authUrl = `https://twitter.com/i/oauth2/authorize?` + 
@@ -70,10 +95,10 @@ serve(async (req) => {
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `scope=${encodeURIComponent('tweet.read users.read bookmark.read offline.access')}&` +
       `state=${state}&` +
-      `code_challenge=challenge&` +
+      `code_challenge=${codeVerifier}&` +
       `code_challenge_method=plain`;
 
-    console.log('Generated Twitter OAuth URL with PKCE');
+    console.log('Generated Twitter OAuth URL with proper PKCE');
 
     return new Response(
       JSON.stringify({ authUrl }),

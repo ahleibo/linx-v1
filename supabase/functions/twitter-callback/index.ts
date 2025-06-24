@@ -41,9 +41,35 @@ serve(async (req) => {
       `, { headers: { 'Content-Type': 'text/html' } });
     }
 
-    // Extract user ID from state
-    const userId = state.split('_')[0];
-    console.log('Extracted user ID:', userId);
+    // Get Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get stored auth session
+    const { data: authSession, error: sessionError } = await supabase
+      .from('twitter_auth_sessions')
+      .select('user_id, code_verifier')
+      .eq('state', state)
+      .single();
+
+    if (sessionError || !authSession) {
+      console.error('Invalid or expired auth session:', sessionError);
+      return new Response(`
+        <html>
+          <body>
+            <script>
+              window.opener.postMessage({ type: 'twitter-auth-error', error: 'Invalid or expired auth session' }, '*');
+              window.close();
+            </script>
+          </body>
+        </html>
+      `, { headers: { 'Content-Type': 'text/html' } });
+    }
+
+    const userId = authSession.user_id;
+    const codeVerifier = authSession.code_verifier;
+    console.log('Retrieved auth session for user:', userId);
     
     // Exchange code for access token using OAuth 2.0
     const clientId = Deno.env.get('TWITTER_CLIENT_ID');
@@ -83,7 +109,7 @@ serve(async (req) => {
         grant_type: 'authorization_code',
         code: code,
         redirect_uri: redirectUri,
-        code_verifier: 'challenge',
+        code_verifier: codeVerifier,
       })
     });
 
@@ -109,10 +135,6 @@ serve(async (req) => {
     console.log('Token data received:', Object.keys(tokenData));
     
     // Store tokens in database
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
     const { error: dbError } = await supabase
       .from('twitter_connections')
       .upsert({
@@ -136,6 +158,12 @@ serve(async (req) => {
         </html>
       `, { headers: { 'Content-Type': 'text/html' } });
     }
+
+    // Clean up auth session
+    await supabase
+      .from('twitter_auth_sessions')
+      .delete()
+      .eq('state', state);
 
     console.log('Twitter connection saved successfully');
 
