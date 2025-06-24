@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link, Loader2, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { Link, Loader2, CheckCircle, AlertCircle, Info, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +23,7 @@ export const UrlImportDialog = ({ trigger, onSuccess }: UrlImportDialogProps) =>
   const [isOpen, setIsOpen] = useState(false);
   const [url, setUrl] = useState('');
   const [isImporting, setIsImporting] = useState(false);
-  const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error' | 'existing'>('idle');
+  const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error' | 'existing' | 'rateLimit'>('idle');
   const { toast } = useToast();
 
   const handleImport = async () => {
@@ -63,12 +63,22 @@ export const UrlImportDialog = ({ trigger, onSuccess }: UrlImportDialogProps) =>
           setImportStatus('idle');
         }, 1500);
       } else {
-        setImportStatus('error');
-        toast({
-          title: "Import Failed",
-          description: result.error || "Failed to import post",
-          variant: "destructive",
-        });
+        // Check for specific error types
+        if (result.error?.includes('rate limit')) {
+          setImportStatus('rateLimit');
+          toast({
+            title: "Rate Limit Exceeded",
+            description: "Too many requests. Please wait a few minutes and try again.",
+            variant: "destructive",
+          });
+        } else {
+          setImportStatus('error');
+          toast({
+            title: "Import Failed",
+            description: result.error || "Failed to import post",
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       setImportStatus('error');
@@ -85,6 +95,50 @@ export const UrlImportDialog = ({ trigger, onSuccess }: UrlImportDialogProps) =>
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !isImporting && url.trim()) {
       handleImport();
+    }
+  };
+
+  const getButtonContent = () => {
+    if (isImporting) {
+      return (
+        <>
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          Importing...
+        </>
+      );
+    }
+    
+    switch (importStatus) {
+      case 'success':
+        return (
+          <>
+            <CheckCircle className="h-4 w-4 mr-2 text-green-400" />
+            Imported!
+          </>
+        );
+      case 'existing':
+        return (
+          <>
+            <Info className="h-4 w-4 mr-2 text-blue-400" />
+            Already exists!
+          </>
+        );
+      case 'rateLimit':
+        return (
+          <>
+            <Clock className="h-4 w-4 mr-2 text-orange-400" />
+            Rate Limited
+          </>
+        );
+      case 'error':
+        return (
+          <>
+            <AlertCircle className="h-4 w-4 mr-2 text-red-400" />
+            Failed
+          </>
+        );
+      default:
+        return 'Import Post';
     }
   };
 
@@ -132,17 +186,15 @@ export const UrlImportDialog = ({ trigger, onSuccess }: UrlImportDialogProps) =>
             disabled={isImporting || !url.trim()}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
           >
-            {isImporting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {importStatus === 'success' && <CheckCircle className="h-4 w-4 mr-2 text-green-400" />}
-            {importStatus === 'existing' && <Info className="h-4 w-4 mr-2 text-blue-400" />}
-            {importStatus === 'error' && <AlertCircle className="h-4 w-4 mr-2 text-red-400" />}
-            
-            {isImporting ? 'Importing...' : 
-             importStatus === 'success' ? 'Imported!' :
-             importStatus === 'existing' ? 'Already exists!' :
-             importStatus === 'error' ? 'Failed' :
-             'Import Post'}
+            {getButtonContent()}
           </Button>
+
+          {importStatus === 'rateLimit' && (
+            <div className="text-xs text-orange-400 bg-orange-400/10 p-3 rounded-lg">
+              <p className="font-medium mb-1">⏳ Rate limit reached</p>
+              <p>The Twitter API has temporary usage limits. Please wait a few minutes before trying again.</p>
+            </div>
+          )}
 
           <div className="text-xs text-slate-500 space-y-1">
             <p>• Works with public posts from x.com and twitter.com</p>

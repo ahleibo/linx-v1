@@ -42,7 +42,7 @@ serve(async (req) => {
     if (!bearerToken) {
       console.error('Twitter Bearer Token not configured');
       return new Response(
-        JSON.stringify({ error: 'Twitter API not configured' }),
+        JSON.stringify({ error: 'Twitter API not configured. Please contact support.' }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 500 
@@ -115,7 +115,7 @@ serve(async (req) => {
       
       if (response.status === 401) {
         return new Response(
-          JSON.stringify({ error: 'Twitter API authentication failed' }),
+          JSON.stringify({ error: 'Twitter API authentication failed. Please contact support.' }),
           { 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 401 
@@ -125,7 +125,10 @@ serve(async (req) => {
       
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: 'Twitter API rate limit exceeded' }),
+          JSON.stringify({ 
+            error: 'Twitter API rate limit exceeded. Please try again in a few minutes.',
+            rateLimited: true 
+          }),
           { 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 429 
@@ -133,8 +136,28 @@ serve(async (req) => {
         );
       }
 
+      if (response.status === 403) {
+        return new Response(
+          JSON.stringify({ error: 'This post is private or restricted. Only public posts can be imported.' }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 403 
+          }
+        );
+      }
+
+      if (response.status === 404) {
+        return new Response(
+          JSON.stringify({ error: 'Post not found. Please check the URL and try again.' }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 404 
+          }
+        );
+      }
+
       return new Response(
-        JSON.stringify({ error: `Twitter API error: ${response.status}` }),
+        JSON.stringify({ error: `Unable to fetch post (Error ${response.status}). Please try again later.` }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: response.status 
@@ -143,12 +166,12 @@ serve(async (req) => {
     }
 
     const twitterData: TwitterApiResponse = await response.json();
-    console.log('Twitter API response:', JSON.stringify(twitterData, null, 2));
+    console.log('Twitter API response received successfully');
 
     if (twitterData.errors && twitterData.errors.length > 0) {
       console.error('Twitter API errors:', twitterData.errors);
       return new Response(
-        JSON.stringify({ error: twitterData.errors[0].detail || 'Twitter API error' }),
+        JSON.stringify({ error: twitterData.errors[0].detail || 'Twitter API error occurred' }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 400 
@@ -158,7 +181,7 @@ serve(async (req) => {
 
     if (!twitterData.data) {
       return new Response(
-        JSON.stringify({ error: 'Tweet not found or not accessible' }),
+        JSON.stringify({ error: 'Post not found or not accessible. Please verify the URL.' }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 404 
@@ -178,7 +201,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Edge function error:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'Internal server error. Please try again later.' }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500 
