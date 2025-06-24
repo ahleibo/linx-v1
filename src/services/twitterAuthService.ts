@@ -4,8 +4,24 @@ import { supabase } from '@/integrations/supabase/client';
 export class TwitterAuthService {
   // Get current session token for authentication
   private static async getAuthToken(): Promise<string | null> {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token || null;
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Failed to get session:', error);
+        return null;
+      }
+      
+      if (!session?.access_token) {
+        console.error('No access token in session');
+        return null;
+      }
+      
+      return session.access_token;
+    } catch (error) {
+      console.error('Error getting auth token:', error);
+      return null;
+    }
   }
 
   // Check if user has Twitter connected
@@ -13,13 +29,16 @@ export class TwitterAuthService {
     try {
       const token = await this.getAuthToken();
       if (!token) {
-        console.error('No auth token available');
+        console.log('No auth token available for Twitter connection check');
         return false;
       }
 
+      console.log('Checking Twitter connection with token available');
+
       const { data, error } = await supabase.functions.invoke('check-twitter-connection', {
         headers: {
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
       
@@ -28,6 +47,7 @@ export class TwitterAuthService {
         return false;
       }
       
+      console.log('Connection check response:', data);
       return data?.connected || false;
     } catch (error) {
       console.error('Error checking Twitter connection:', error);
@@ -40,18 +60,21 @@ export class TwitterAuthService {
     try {
       const token = await this.getAuthToken();
       if (!token) {
-        return { success: false, error: 'User not authenticated' };
+        return { success: false, error: 'User not authenticated. Please log in first.' };
       }
+
+      console.log('Starting Twitter OAuth flow');
 
       const { data, error } = await supabase.functions.invoke('twitter-auth', {
         headers: {
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
       
       if (error) {
         console.error('Twitter auth function error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: error.message || 'Failed to start OAuth flow' };
       }
 
       if (data?.authUrl) {
@@ -65,7 +88,7 @@ export class TwitterAuthService {
         );
         
         if (!popup) {
-          return { success: false, error: 'Popup blocked. Please allow popups for this site.' };
+          return { success: false, error: 'Popup blocked. Please allow popups for this site and try again.' };
         }
         
         // Return promise that resolves when auth completes
@@ -106,7 +129,7 @@ export class TwitterAuthService {
               if (!resolved) {
                 resolved = true;
                 cleanup();
-                resolve({ success: false, error: 'Authentication cancelled' });
+                resolve({ success: false, error: 'Authentication was cancelled. Please try again.' });
               }
             }
           }, 1000);
@@ -120,16 +143,16 @@ export class TwitterAuthService {
               if (!popup.closed) {
                 popup.close();
               }
-              resolve({ success: false, error: 'Authentication timeout' });
+              resolve({ success: false, error: 'Authentication timed out. Please try again.' });
             }
           }, 300000); // 5 minutes
         });
       }
 
-      return { success: false, error: 'No auth URL received' };
+      return { success: false, error: 'No authentication URL received from server' };
     } catch (error: any) {
       console.error('Twitter auth error:', error);
-      return { success: false, error: error.message || 'Failed to connect Twitter' };
+      return { success: false, error: error.message || 'Failed to connect Twitter account' };
     }
   }
 
@@ -143,7 +166,8 @@ export class TwitterAuthService {
 
       const { data, error } = await supabase.functions.invoke('import-twitter-bookmarks', {
         headers: {
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
       
@@ -170,7 +194,8 @@ export class TwitterAuthService {
 
       const { data, error } = await supabase.functions.invoke('disconnect-twitter', {
         headers: {
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
       
@@ -180,7 +205,7 @@ export class TwitterAuthService {
 
       return { success: true };
     } catch (error: any) {
-      return { success: false, error: error.message || 'Failed to disconnect Twitter' };
+      return { success: false, error: error.message || 'Failed to disconnect Twitter account' };
     }
   }
 }

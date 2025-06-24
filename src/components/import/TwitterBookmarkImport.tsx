@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Twitter, Download, CheckCircle, AlertCircle, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,21 +11,36 @@ export const TwitterBookmarkImport = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [checkingConnection, setCheckingConnection] = useState(true);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    checkTwitterConnection();
-  }, []);
+    // Only check connection status after a delay to ensure user is properly authenticated
+    const checkConnection = async () => {
+      try {
+        setCheckingConnection(true);
+        setConnectionError(null);
+        
+        // Add a small delay to ensure auth is stable
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        const connected = await TwitterAuthService.isTwitterConnected();
+        setIsConnected(connected);
+      } catch (error: any) {
+        console.error('Error checking Twitter connection:', error);
+        setConnectionError(error.message || 'Failed to check connection status');
+        setIsConnected(false);
+      } finally {
+        setCheckingConnection(false);
+      }
+    };
 
-  const checkTwitterConnection = async () => {
-    setCheckingConnection(true);
-    const connected = await TwitterAuthService.isTwitterConnected();
-    setIsConnected(connected);
-    setCheckingConnection(false);
-  };
+    checkConnection();
+  }, []);
 
   const handleConnectTwitter = async () => {
     setIsConnecting(true);
+    setConnectionError(null);
     
     try {
       const result = await TwitterAuthService.connectTwitter();
@@ -36,6 +52,7 @@ export const TwitterBookmarkImport = () => {
           description: "Your Twitter account has been successfully connected.",
         });
       } else {
+        setConnectionError(result.error || 'Failed to connect Twitter account');
         toast({
           title: "Connection Failed",
           description: result.error || "Failed to connect Twitter account",
@@ -44,9 +61,11 @@ export const TwitterBookmarkImport = () => {
       }
     } catch (error: any) {
       console.error('Connection error:', error);
+      const errorMessage = error.message || "An unexpected error occurred";
+      setConnectionError(errorMessage);
       toast({
         title: "Connection Failed",
-        description: error.message || "An unexpected error occurred",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -79,6 +98,7 @@ export const TwitterBookmarkImport = () => {
     
     if (result.success) {
       setIsConnected(false);
+      setConnectionError(null);
       toast({
         title: "Twitter Disconnected",
         description: "Your Twitter account has been disconnected.",
@@ -89,6 +109,22 @@ export const TwitterBookmarkImport = () => {
         description: result.error || "Failed to disconnect Twitter account",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleRetryConnection = async () => {
+    setCheckingConnection(true);
+    setConnectionError(null);
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const connected = await TwitterAuthService.isTwitterConnected();
+      setIsConnected(connected);
+    } catch (error: any) {
+      console.error('Retry connection check failed:', error);
+      setConnectionError(error.message || 'Failed to check connection status');
+    } finally {
+      setCheckingConnection(false);
     }
   };
 
@@ -114,6 +150,23 @@ export const TwitterBookmarkImport = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {connectionError && (
+          <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+            <AlertCircle className="h-4 w-4 text-red-400" />
+            <div className="flex-1">
+              <p className="text-sm text-red-400">{connectionError}</p>
+            </div>
+            <Button
+              onClick={handleRetryConnection}
+              size="sm"
+              variant="outline"
+              className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+            >
+              Retry
+            </Button>
+          </div>
+        )}
+
         {!isConnected ? (
           <>
             <p className="text-slate-300 text-sm">
