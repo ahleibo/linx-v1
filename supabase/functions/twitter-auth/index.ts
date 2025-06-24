@@ -26,7 +26,6 @@ async function generateCodeChallenge(verifier: string) {
 
 serve(async (req) => {
   console.log('Twitter auth function called with method:', req.method);
-  console.log('Headers:', Object.fromEntries(req.headers.entries()));
 
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -34,13 +33,13 @@ serve(async (req) => {
   }
 
   try {
-    // Get Supabase client
+    // Get Supabase client with anon key for user validation
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
     // Get user from Authorization header
-    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
+    const authHeader = req.headers.get('Authorization');
     console.log('Auth header found:', !!authHeader);
     
     if (!authHeader) {
@@ -58,11 +57,11 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
     console.log('Token extracted:', !!token);
 
-    // Get user from auth token
+    // Get user from auth token using the anon client
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
-      console.error('Authentication failed:', authError);
+      console.error('Authentication failed:', authError?.message || 'No user found');
       return new Response(
         JSON.stringify({ error: 'Invalid authentication token' }),
         { 
@@ -100,8 +99,12 @@ serve(async (req) => {
       codeChallenge: !!codeChallenge 
     });
     
+    // Use service role key for database operations
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
+    
     // Store code verifier in database for later verification
-    const { error: storeError } = await supabase
+    const { error: storeError } = await adminSupabase
       .from('twitter_auth_sessions')
       .upsert({
         user_id: user.id,
