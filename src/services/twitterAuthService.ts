@@ -7,6 +7,12 @@ export class TwitterAuthService {
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
       
+      console.log('Getting auth token:', { 
+        hasSession: !!session, 
+        hasAccessToken: !!session?.access_token,
+        error: error?.message 
+      });
+      
       if (error) {
         console.error('Failed to get session:', error);
         return null;
@@ -63,7 +69,7 @@ export class TwitterAuthService {
         return { success: false, error: 'User not authenticated. Please log in first.' };
       }
 
-      console.log('Starting Twitter OAuth flow');
+      console.log('Starting Twitter OAuth flow with token available');
 
       const { data, error } = await supabase.functions.invoke('twitter-auth', {
         headers: {

@@ -4,7 +4,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from '../_shared/cors.ts';
 
 serve(async (req) => {
-  console.log('Check Twitter connection function called');
+  console.log('=== CHECK TWITTER CONNECTION STARTED ===');
+  console.log('Request method:', req.method);
 
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -16,6 +17,9 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+    console.log('Supabase URL:', supabaseUrl);
+    console.log('Anon key available:', !!supabaseAnonKey);
 
     // Get user from Authorization header
     const authHeader = req.headers.get('Authorization');
@@ -39,6 +43,12 @@ serve(async (req) => {
     // Get user from auth token using the anon client
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
+    console.log('User lookup result:', { 
+      found: !!user, 
+      userId: user?.id, 
+      error: authError?.message 
+    });
+
     if (authError || !user) {
       console.error('Authentication failed:', authError?.message || 'No user found');
       return new Response(
@@ -56,7 +66,10 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    console.log('Service key available:', !!supabaseServiceKey);
+
     // Check if user has a Twitter connection
+    console.log('Checking Twitter connection for user:', user.id);
     const { data: connection, error: connectionError } = await adminSupabase
       .from('twitter_connections')
       .select('id, expires_at')
@@ -76,6 +89,11 @@ serve(async (req) => {
 
     // Check if token is expired
     const isExpired = connection.expires_at && new Date(connection.expires_at) < new Date();
+    console.log('Connection status:', { 
+      found: !!connection, 
+      expired: isExpired,
+      expiresAt: connection.expires_at 
+    });
     
     return new Response(
       JSON.stringify({ connected: !isExpired }),
@@ -86,7 +104,9 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Check connection error:', error);
+    console.error('=== CHECK CONNECTION ERROR ===');
+    console.error('Error details:', error);
+    console.error('Stack trace:', error.stack);
     return new Response(
       JSON.stringify({ error: 'Internal server error', connected: false }),
       { 
