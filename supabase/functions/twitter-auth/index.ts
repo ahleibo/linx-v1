@@ -59,18 +59,21 @@ serve(async (req) => {
       );
     }
 
-    // Generate OAuth URL for Twitter
+    // Generate OAuth URL for Twitter with PKCE
     const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/twitter-callback`;
     const state = `${user.id}_${Date.now()}`;
     
+    // Twitter OAuth 2.0 with PKCE
     const authUrl = `https://twitter.com/i/oauth2/authorize?` + 
       `response_type=code&` +
       `client_id=${clientId}&` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-      `scope=${encodeURIComponent('tweet.read users.read bookmark.read')}&` +
-      `state=${state}`;
+      `scope=${encodeURIComponent('tweet.read users.read bookmark.read offline.access')}&` +
+      `state=${state}&` +
+      `code_challenge=challenge&` +
+      `code_challenge_method=plain`;
 
-    console.log('Generated Twitter OAuth URL');
+    console.log('Generated Twitter OAuth URL with PKCE');
 
     return new Response(
       JSON.stringify({ authUrl }),
