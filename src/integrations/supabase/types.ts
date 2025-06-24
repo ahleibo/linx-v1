@@ -472,6 +472,30 @@ export type Database = {
           },
         ]
       }
+      twitter_auth_sessions: {
+        Row: {
+          code_verifier: string
+          created_at: string
+          id: string
+          state: string
+          user_id: string
+        }
+        Insert: {
+          code_verifier: string
+          created_at?: string
+          id?: string
+          state: string
+          user_id: string
+        }
+        Update: {
+          code_verifier?: string
+          created_at?: string
+          id?: string
+          state?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       twitter_authors: {
         Row: {
           created_at: string | null
@@ -582,6 +606,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_twitter_auth_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_complete_tweet_data: {
         Args: { tweet_id: string }
         Returns: Json
