@@ -13,37 +13,64 @@ serve(async (req) => {
 
     console.log('Callback parameters:', { code: !!code, state, error });
 
+    // Handle OAuth error
     if (error) {
       console.error('Twitter OAuth error:', error);
       return new Response(`
         <html>
-          <body>
+          <head><title>Authentication Error</title></head>
+          <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+            <h1>Authentication Error</h1>
+            <p style="color: red;">${error}</p>
             <script>
-              if (window.opener) {
-                window.opener.postMessage({ type: 'twitter-auth-error', error: '${error}' }, '*');
-                window.close();
-              } else {
-                document.body.innerHTML = '<h1>Authentication Error</h1><p>${error}</p>';
+              console.log('Callback error - posting message to opener');
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage({ 
+                    type: 'twitter-auth-error', 
+                    error: '${error}' 
+                  }, '*');
+                  setTimeout(() => window.close(), 2000);
+                } else {
+                  console.log('No opener window found');
+                }
+              } catch (e) {
+                console.error('Error posting message:', e);
               }
             </script>
+            <p><button onclick="window.close()">Close Window</button></p>
           </body>
         </html>
       `, { headers: { 'Content-Type': 'text/html' } });
     }
 
+    // Check required parameters
     if (!code || !state) {
       console.error('Missing required parameters:', { code: !!code, state: !!state });
+      const errorMsg = 'Missing required parameters';
       return new Response(`
         <html>
-          <body>
+          <head><title>Authentication Error</title></head>
+          <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+            <h1>Authentication Error</h1>
+            <p style="color: red;">${errorMsg}</p>
             <script>
-              if (window.opener) {
-                window.opener.postMessage({ type: 'twitter-auth-error', error: 'Missing required parameters' }, '*');
-                window.close();
-              } else {
-                document.body.innerHTML = '<h1>Authentication Error</h1><p>Missing required parameters</p>';
+              console.log('Callback parameter error - posting message to opener');
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage({ 
+                    type: 'twitter-auth-error', 
+                    error: '${errorMsg}' 
+                  }, '*');
+                  setTimeout(() => window.close(), 2000);
+                } else {
+                  console.log('No opener window found');
+                }
+              } catch (e) {
+                console.error('Error posting message:', e);
               }
             </script>
+            <p><button onclick="window.close()">Close Window</button></p>
           </body>
         </html>
       `, { headers: { 'Content-Type': 'text/html' } });
@@ -63,17 +90,30 @@ serve(async (req) => {
 
     if (sessionError || !authSession) {
       console.error('Invalid or expired auth session:', sessionError);
+      const errorMsg = 'Invalid or expired auth session';
       return new Response(`
         <html>
-          <body>
+          <head><title>Authentication Error</title></head>
+          <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+            <h1>Authentication Error</h1>
+            <p style="color: red;">${errorMsg}</p>
             <script>
-              if (window.opener) {
-                window.opener.postMessage({ type: 'twitter-auth-error', error: 'Invalid or expired auth session' }, '*');
-                window.close();
-              } else {
-                document.body.innerHTML = '<h1>Authentication Error</h1><p>Invalid or expired auth session</p>';
+              console.log('Session error - posting message to opener');
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage({ 
+                    type: 'twitter-auth-error', 
+                    error: '${errorMsg}' 
+                  }, '*');
+                  setTimeout(() => window.close(), 2000);
+                } else {
+                  console.log('No opener window found');
+                }
+              } catch (e) {
+                console.error('Error posting message:', e);
               }
             </script>
+            <p><button onclick="window.close()">Close Window</button></p>
           </body>
         </html>
       `, { headers: { 'Content-Type': 'text/html' } });
@@ -83,7 +123,7 @@ serve(async (req) => {
     const codeVerifier = authSession.code_verifier;
     console.log('Retrieved auth session for user:', userId);
     
-    // Exchange code for access token using OAuth 2.0
+    // Exchange code for access token
     const clientId = Deno.env.get('TWITTER_CLIENT_ID');
     const clientSecret = Deno.env.get('TWITTER_CLIENT_SECRET');
     const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/twitter-callback`;
@@ -97,17 +137,30 @@ serve(async (req) => {
 
     if (!clientId || !clientSecret) {
       console.error('Missing Twitter credentials');
+      const errorMsg = 'Server configuration error';
       return new Response(`
         <html>
-          <body>
+          <head><title>Server Error</title></head>
+          <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+            <h1>Server Error</h1>
+            <p style="color: red;">${errorMsg}</p>
             <script>
-              if (window.opener) {
-                window.opener.postMessage({ type: 'twitter-auth-error', error: 'Server configuration error' }, '*');
-                window.close();
-              } else {
-                document.body.innerHTML = '<h1>Server Error</h1><p>Twitter credentials not configured</p>';
+              console.log('Config error - posting message to opener');
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage({ 
+                    type: 'twitter-auth-error', 
+                    error: '${errorMsg}' 
+                  }, '*');
+                  setTimeout(() => window.close(), 2000);
+                } else {
+                  console.log('No opener window found');
+                }
+              } catch (e) {
+                console.error('Error posting message:', e);
               }
             </script>
+            <p><button onclick="window.close()">Close Window</button></p>
           </body>
         </html>
       `, { headers: { 'Content-Type': 'text/html' } });
@@ -140,17 +193,34 @@ serve(async (req) => {
 
     if (!tokenResponse.ok) {
       console.error('Token exchange failed:', responseText);
+      const errorMsg = `Token exchange failed: ${responseText}`;
       return new Response(`
         <html>
-          <body>
+          <head><title>Authentication Error</title></head>
+          <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+            <h1>Authentication Error</h1>
+            <p style="color: red;">Token exchange failed</p>
+            <details>
+              <summary>Error Details</summary>
+              <pre style="text-align: left; background: #f5f5f5; padding: 10px; border-radius: 4px;">${responseText}</pre>
+            </details>
             <script>
-              if (window.opener) {
-                window.opener.postMessage({ type: 'twitter-auth-error', error: 'Token exchange failed: ${responseText}' }, '*');
-                window.close();
-              } else {
-                document.body.innerHTML = '<h1>Authentication Error</h1><p>Token exchange failed</p><pre>${responseText}</pre>';
+              console.log('Token exchange error - posting message to opener');
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage({ 
+                    type: 'twitter-auth-error', 
+                    error: 'Token exchange failed' 
+                  }, '*');
+                  setTimeout(() => window.close(), 2000);
+                } else {
+                  console.log('No opener window found');
+                }
+              } catch (e) {
+                console.error('Error posting message:', e);
               }
             </script>
+            <p><button onclick="window.close()">Close Window</button></p>
           </body>
         </html>
       `, { headers: { 'Content-Type': 'text/html' } });
@@ -172,17 +242,30 @@ serve(async (req) => {
 
     if (dbError) {
       console.error('Database error:', dbError);
+      const errorMsg = 'Failed to save connection';
       return new Response(`
         <html>
-          <body>
+          <head><title>Database Error</title></head>
+          <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+            <h1>Database Error</h1>
+            <p style="color: red;">${errorMsg}</p>
             <script>
-              if (window.opener) {
-                window.opener.postMessage({ type: 'twitter-auth-error', error: 'Failed to save connection' }, '*');
-                window.close();
-              } else {
-                document.body.innerHTML = '<h1>Database Error</h1><p>Failed to save connection</p>';
+              console.log('Database error - posting message to opener');
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage({ 
+                    type: 'twitter-auth-error', 
+                    error: '${errorMsg}' 
+                  }, '*');
+                  setTimeout(() => window.close(), 2000);
+                } else {
+                  console.log('No opener window found');
+                }
+              } catch (e) {
+                console.error('Error posting message:', e);
               }
             </script>
+            <p><button onclick="window.close()">Close Window</button></p>
           </body>
         </html>
       `, { headers: { 'Content-Type': 'text/html' } });
@@ -199,35 +282,90 @@ serve(async (req) => {
     // Return success page that communicates with parent window
     return new Response(`
       <html>
+        <head>
+          <title>Authentication Success</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
+            .success { color: green; font-size: 18px; margin: 20px 0; }
+            .loading { color: #666; margin: 10px 0; }
+          </style>
+        </head>
         <body>
+          <h1>🎉 Success!</h1>
+          <p class="success">Twitter account connected successfully!</p>
+          <p class="loading">Closing window...</p>
           <script>
             console.log('Callback success - posting message to opener');
-            if (window.opener) {
-              window.opener.postMessage({ type: 'twitter-auth-success' }, '*');
-              setTimeout(() => window.close(), 1000);
-            } else {
-              document.body.innerHTML = '<h1>Success!</h1><p>Authentication successful! You can close this window.</p>';
+            let messageSent = false;
+            
+            function sendSuccessMessage() {
+              if (messageSent) return;
+              try {
+                if (window.opener && !window.opener.closed) {
+                  console.log('Sending success message to opener');
+                  window.opener.postMessage({ 
+                    type: 'twitter-auth-success' 
+                  }, '*');
+                  messageSent = true;
+                  console.log('Success message sent');
+                  setTimeout(() => {
+                    console.log('Closing window');
+                    window.close();
+                  }, 1500);
+                } else {
+                  console.log('No opener window found or opener is closed');
+                  setTimeout(() => window.close(), 3000);
+                }
+              } catch (e) {
+                console.error('Error posting success message:', e);
+                setTimeout(() => window.close(), 3000);
+              }
             }
+            
+            // Try sending message immediately and with a slight delay
+            sendSuccessMessage();
+            setTimeout(sendSuccessMessage, 100);
+            setTimeout(sendSuccessMessage, 500);
+            
+            // Fallback: close window after 5 seconds if still open
+            setTimeout(() => {
+              if (!window.closed) {
+                console.log('Force closing window after timeout');
+                window.close();
+              }
+            }, 5000);
           </script>
-          <h1>Success!</h1>
-          <p>Authentication successful! You can close this window.</p>
+          <p><button onclick="window.close()">Close Window</button></p>
         </body>
       </html>
     `, { headers: { 'Content-Type': 'text/html' } });
 
   } catch (error) {
     console.error('Twitter callback error:', error);
+    const errorMsg = `Authentication failed: ${error.message}`;
     return new Response(`
       <html>
-        <body>
+        <head><title>Error</title></head>
+        <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+          <h1>Error</h1>
+          <p style="color: red;">${errorMsg}</p>
           <script>
-            if (window.opener) {
-              window.opener.postMessage({ type: 'twitter-auth-error', error: 'Authentication failed: ${error.message}' }, '*');
-              window.close();
-            } else {
-              document.body.innerHTML = '<h1>Error</h1><p>Authentication failed: ${error.message}</p>';
+            console.log('General error - posting message to opener');
+            try {
+              if (window.opener && !window.opener.closed) {
+                window.opener.postMessage({ 
+                  type: 'twitter-auth-error', 
+                  error: 'Authentication failed' 
+                }, '*');
+                setTimeout(() => window.close(), 2000);
+              } else {
+                console.log('No opener window found');
+              }
+            } catch (e) {
+              console.error('Error posting message:', e);
             }
           </script>
+          <p><button onclick="window.close()">Close Window</button></p>
         </body>
       </html>
     `, { headers: { 'Content-Type': 'text/html' } });

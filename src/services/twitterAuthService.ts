@@ -57,35 +57,72 @@ export class TwitterAuthService {
       if (data?.authUrl) {
         console.log('Opening Twitter OAuth window:', data.authUrl);
         
-        // Open Twitter OAuth in new window
-        const popup = window.open(data.authUrl, 'twitter-auth', 'width=600,height=600,scrollbars=yes,resizable=yes');
+        // Open Twitter OAuth in new window with better popup settings
+        const popup = window.open(
+          data.authUrl, 
+          'twitter-auth', 
+          'width=600,height=700,scrollbars=yes,resizable=yes,menubar=no,toolbar=no,location=no,status=no'
+        );
+        
+        if (!popup) {
+          return { success: false, error: 'Popup blocked. Please allow popups for this site.' };
+        }
         
         // Return promise that resolves when auth completes
         return new Promise((resolve) => {
+          let resolved = false;
+          
           const handleMessage = (event: MessageEvent) => {
             console.log('Received message from popup:', event.data);
             
+            if (resolved) return;
+            
             if (event.data?.type === 'twitter-auth-success') {
               console.log('Twitter auth successful');
-              window.removeEventListener('message', handleMessage);
+              resolved = true;
+              cleanup();
               resolve({ success: true });
             } else if (event.data?.type === 'twitter-auth-error') {
               console.error('Twitter auth error from popup:', event.data.error);
-              window.removeEventListener('message', handleMessage);
-              resolve({ success: false, error: event.data.error });
+              resolved = true;
+              cleanup();
+              resolve({ success: false, error: event.data.error || 'Authentication failed' });
+            }
+          };
+          
+          const cleanup = () => {
+            window.removeEventListener('message', handleMessage);
+            if (checkClosedInterval) {
+              clearInterval(checkClosedInterval);
             }
           };
           
           window.addEventListener('message', handleMessage);
           
           // Check if popup was closed manually
-          const checkClosed = setInterval(() => {
-            if (popup?.closed) {
-              clearInterval(checkClosed);
-              window.removeEventListener('message', handleMessage);
-              resolve({ success: false, error: 'Authentication cancelled' });
+          const checkClosedInterval = setInterval(() => {
+            if (popup.closed) {
+              console.log('Popup was closed manually');
+              if (!resolved) {
+                resolved = true;
+                cleanup();
+                resolve({ success: false, error: 'Authentication cancelled' });
+              }
             }
           }, 1000);
+          
+          // Timeout after 5 minutes
+          setTimeout(() => {
+            if (!resolved) {
+              console.log('Authentication timeout');
+              resolved = true;
+              cleanup();
+              if (!popup.closed) {
+                popup.close();
+              }
+              resolve({ success: false, error: 'Authentication timeout' });
+            }
+          }, 300000); // 5 minutes
         });
       }
 
