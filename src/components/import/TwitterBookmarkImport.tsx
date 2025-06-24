@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Twitter, Download, CheckCircle, AlertCircle, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,22 +14,7 @@ export const TwitterBookmarkImport = () => {
 
   useEffect(() => {
     checkTwitterConnection();
-    
-    // Listen for Twitter auth success
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'twitter-auth-success') {
-        setIsConnected(true);
-        setIsConnecting(false);
-        toast({
-          title: "Twitter Connected!",
-          description: "Your Twitter account has been successfully connected.",
-        });
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [toast]);
+  }, []);
 
   const checkTwitterConnection = async () => {
     setCheckingConnection(true);
@@ -41,15 +25,32 @@ export const TwitterBookmarkImport = () => {
 
   const handleConnectTwitter = async () => {
     setIsConnecting(true);
-    const result = await TwitterAuthService.connectTwitter();
     
-    if (!result.success) {
-      setIsConnecting(false);
+    try {
+      const result = await TwitterAuthService.connectTwitter();
+      
+      if (result.success) {
+        setIsConnected(true);
+        toast({
+          title: "Twitter Connected!",
+          description: "Your Twitter account has been successfully connected.",
+        });
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: result.error || "Failed to connect Twitter account",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error('Connection error:', error);
       toast({
         title: "Connection Failed",
-        description: result.error || "Failed to connect Twitter account",
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
+    } finally {
+      setIsConnecting(false);
     }
   };
 

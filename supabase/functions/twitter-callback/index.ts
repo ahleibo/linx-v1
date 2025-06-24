@@ -145,7 +145,7 @@ serve(async (req) => {
           <body>
             <script>
               if (window.opener) {
-                window.opener.postMessage({ type: 'twitter-auth-error', error: 'Token exchange failed' }, '*');
+                window.opener.postMessage({ type: 'twitter-auth-error', error: 'Token exchange failed: ${responseText}' }, '*');
                 window.close();
               } else {
                 document.body.innerHTML = '<h1>Authentication Error</h1><p>Token exchange failed</p><pre>${responseText}</pre>';
@@ -201,9 +201,10 @@ serve(async (req) => {
       <html>
         <body>
           <script>
+            console.log('Callback success - posting message to opener');
             if (window.opener) {
               window.opener.postMessage({ type: 'twitter-auth-success' }, '*');
-              window.close();
+              setTimeout(() => window.close(), 1000);
             } else {
               document.body.innerHTML = '<h1>Success!</h1><p>Authentication successful! You can close this window.</p>';
             }
@@ -221,7 +222,7 @@ serve(async (req) => {
         <body>
           <script>
             if (window.opener) {
-              window.opener.postMessage({ type: 'twitter-auth-error', error: 'Authentication failed' }, '*');
+              window.opener.postMessage({ type: 'twitter-auth-error', error: 'Authentication failed: ${error.message}' }, '*');
               window.close();
             } else {
               document.body.innerHTML = '<h1>Error</h1><p>Authentication failed: ${error.message}</p>';
