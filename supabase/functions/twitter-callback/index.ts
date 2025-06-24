@@ -6,7 +6,6 @@ serve(async (req) => {
   console.log('=== TWITTER CALLBACK FUNCTION STARTED ===');
   console.log('Request method:', req.method);
   console.log('Request URL:', req.url);
-  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
 
   try {
     const url = new URL(req.url);
@@ -30,7 +29,6 @@ serve(async (req) => {
             <h1>Authentication Error</h1>
             <p style="color: red;">OAuth Error: ${error}</p>
             <script>
-              console.log('OAuth error - posting message to opener');
               if (window.opener && !window.opener.closed) {
                 window.opener.postMessage({ 
                   type: 'twitter-auth-error', 
@@ -56,7 +54,6 @@ serve(async (req) => {
             <h1>Authentication Error</h1>
             <p style="color: red;">${errorMsg}</p>
             <script>
-              console.log('Missing parameters error - posting message to opener');
               if (window.opener && !window.opener.closed) {
                 window.opener.postMessage({ 
                   type: 'twitter-auth-error', 
@@ -73,7 +70,7 @@ serve(async (req) => {
 
     console.log('Valid OAuth callback received, processing...');
 
-    // Initialize Supabase with service role key
+    // Initialize Supabase with service role key (no auth required for callback)
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
@@ -107,7 +104,6 @@ serve(async (req) => {
             <p style="color: red;">${errorMsg}</p>
             <p style="color: #666; font-size: 14px;">Session lookup failed: ${sessionError?.message || 'Session not found'}</p>
             <script>
-              console.log('Session error - posting message to opener');
               if (window.opener && !window.opener.closed) {
                 window.opener.postMessage({ 
                   type: 'twitter-auth-error', 
@@ -143,12 +139,11 @@ serve(async (req) => {
       const errorMsg = 'Server configuration error - missing Twitter credentials';
       return new Response(`
         <html>
-          <head><title>Server Error</title></title>
+          <head><title>Server Error</title></head>
           <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
             <h1>Server Error</h1>
             <p style="color: red;">${errorMsg}</p>
             <script>
-              console.log('Config error - posting message to opener');
               if (window.opener && !window.opener.closed) {
                 window.opener.postMessage({ 
                   type: 'twitter-auth-error', 
@@ -202,7 +197,6 @@ serve(async (req) => {
               <pre style="text-align: left; background: #f5f5f5; padding: 10px; border-radius: 4px;">${responseText}</pre>
             </details>
             <script>
-              console.log('Token exchange error - posting message to opener');
               if (window.opener && !window.opener.closed) {
                 window.opener.postMessage({ 
                   type: 'twitter-auth-error', 
@@ -243,7 +237,6 @@ serve(async (req) => {
             <p style="color: red;">${errorMsg}</p>
             <p style="color: #666; font-size: 14px;">Error: ${dbError.message}</p>
             <script>
-              console.log('Database error - posting message to opener');
               if (window.opener && !window.opener.closed) {
                 window.opener.postMessage({ 
                   type: 'twitter-auth-error', 
@@ -373,7 +366,6 @@ serve(async (req) => {
           <h1>Unexpected Error</h1>
           <p style="color: red;">${errorMsg}</p>
           <script>
-            console.log('Unexpected error - posting message to opener');
             if (window.opener && !window.opener.closed) {
               window.opener.postMessage({ 
                 type: 'twitter-auth-error', 
