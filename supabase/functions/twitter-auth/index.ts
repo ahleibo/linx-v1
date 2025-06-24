@@ -3,11 +3,22 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from '../_shared/cors.ts';
 
-// Generate a random string for PKCE
+// Generate a random string for PKCE code verifier
 function generateCodeVerifier() {
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
   return btoa(String.fromCharCode.apply(null, Array.from(array)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
+// Generate SHA256 hash for PKCE code challenge
+async function generateCodeChallenge(verifier: string) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(verifier);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '');
@@ -73,6 +84,13 @@ serve(async (req) => {
     const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/twitter-callback`;
     const state = `${user.id}_${Date.now()}`;
     const codeVerifier = generateCodeVerifier();
+    const codeChallenge = await generateCodeChallenge(codeVerifier);
+    
+    console.log('Generated PKCE parameters:', { 
+      state, 
+      codeVerifier: !!codeVerifier, 
+      codeChallenge: !!codeChallenge 
+    });
     
     // Store code verifier in database for later verification
     const { error: storeError } = await supabase
@@ -86,19 +104,26 @@ serve(async (req) => {
 
     if (storeError) {
       console.error('Failed to store auth session:', storeError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to store auth session' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500 
+        }
+      );
     }
     
-    // Twitter OAuth 2.0 with PKCE
+    // Twitter OAuth 2.0 with proper PKCE
     const authUrl = `https://twitter.com/i/oauth2/authorize?` + 
       `response_type=code&` +
       `client_id=${clientId}&` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `scope=${encodeURIComponent('tweet.read users.read bookmark.read offline.access')}&` +
       `state=${state}&` +
-      `code_challenge=${codeVerifier}&` +
-      `code_challenge_method=plain`;
+      `code_challenge=${codeChallenge}&` +
+      `code_challenge_method=S256`;
 
-    console.log('Generated Twitter OAuth URL with proper PKCE');
+    console.log('Generated Twitter OAuth URL with SHA256 PKCE');
 
     return new Response(
       JSON.stringify({ authUrl }),

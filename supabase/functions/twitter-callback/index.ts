@@ -19,8 +19,12 @@ serve(async (req) => {
         <html>
           <body>
             <script>
-              window.opener.postMessage({ type: 'twitter-auth-error', error: '${error}' }, '*');
-              window.close();
+              if (window.opener) {
+                window.opener.postMessage({ type: 'twitter-auth-error', error: '${error}' }, '*');
+                window.close();
+              } else {
+                document.body.innerHTML = '<h1>Authentication Error</h1><p>${error}</p>';
+              }
             </script>
           </body>
         </html>
@@ -33,8 +37,12 @@ serve(async (req) => {
         <html>
           <body>
             <script>
-              window.opener.postMessage({ type: 'twitter-auth-error', error: 'Missing required parameters' }, '*');
-              window.close();
+              if (window.opener) {
+                window.opener.postMessage({ type: 'twitter-auth-error', error: 'Missing required parameters' }, '*');
+                window.close();
+              } else {
+                document.body.innerHTML = '<h1>Authentication Error</h1><p>Missing required parameters</p>';
+              }
             </script>
           </body>
         </html>
@@ -59,8 +67,12 @@ serve(async (req) => {
         <html>
           <body>
             <script>
-              window.opener.postMessage({ type: 'twitter-auth-error', error: 'Invalid or expired auth session' }, '*');
-              window.close();
+              if (window.opener) {
+                window.opener.postMessage({ type: 'twitter-auth-error', error: 'Invalid or expired auth session' }, '*');
+                window.close();
+              } else {
+                document.body.innerHTML = '<h1>Authentication Error</h1><p>Invalid or expired auth session</p>';
+              }
             </script>
           </body>
         </html>
@@ -79,7 +91,8 @@ serve(async (req) => {
     console.log('Token exchange details:', { 
       clientId: !!clientId, 
       clientSecret: !!clientSecret, 
-      redirectUri 
+      redirectUri,
+      codeVerifier: !!codeVerifier
     });
 
     if (!clientId || !clientSecret) {
@@ -88,8 +101,12 @@ serve(async (req) => {
         <html>
           <body>
             <script>
-              window.opener.postMessage({ type: 'twitter-auth-error', error: 'Server configuration error' }, '*');
-              window.close();
+              if (window.opener) {
+                window.opener.postMessage({ type: 'twitter-auth-error', error: 'Server configuration error' }, '*');
+                window.close();
+              } else {
+                document.body.innerHTML = '<h1>Server Error</h1><p>Twitter credentials not configured</p>';
+              }
             </script>
           </body>
         </html>
@@ -99,18 +116,22 @@ serve(async (req) => {
     // Create Basic Auth header
     const credentials = btoa(`${clientId}:${clientSecret}`);
     
+    const tokenParams = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: code,
+      redirect_uri: redirectUri,
+      code_verifier: codeVerifier,
+    });
+
+    console.log('Making token request with params:', Object.fromEntries(tokenParams.entries()));
+    
     const tokenResponse = await fetch('https://api.twitter.com/2/oauth2/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Authorization': `Basic ${credentials}`
       },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        code: code,
-        redirect_uri: redirectUri,
-        code_verifier: codeVerifier,
-      })
+      body: tokenParams.toString()
     });
 
     const responseText = await tokenResponse.text();
@@ -123,8 +144,12 @@ serve(async (req) => {
         <html>
           <body>
             <script>
-              window.opener.postMessage({ type: 'twitter-auth-error', error: 'Token exchange failed: ${responseText}' }, '*');
-              window.close();
+              if (window.opener) {
+                window.opener.postMessage({ type: 'twitter-auth-error', error: 'Token exchange failed' }, '*');
+                window.close();
+              } else {
+                document.body.innerHTML = '<h1>Authentication Error</h1><p>Token exchange failed</p><pre>${responseText}</pre>';
+              }
             </script>
           </body>
         </html>
@@ -151,8 +176,12 @@ serve(async (req) => {
         <html>
           <body>
             <script>
-              window.opener.postMessage({ type: 'twitter-auth-error', error: 'Failed to save connection' }, '*');
-              window.close();
+              if (window.opener) {
+                window.opener.postMessage({ type: 'twitter-auth-error', error: 'Failed to save connection' }, '*');
+                window.close();
+              } else {
+                document.body.innerHTML = '<h1>Database Error</h1><p>Failed to save connection</p>';
+              }
             </script>
           </body>
         </html>
@@ -172,9 +201,14 @@ serve(async (req) => {
       <html>
         <body>
           <script>
-            window.opener.postMessage({ type: 'twitter-auth-success' }, '*');
-            window.close();
+            if (window.opener) {
+              window.opener.postMessage({ type: 'twitter-auth-success' }, '*');
+              window.close();
+            } else {
+              document.body.innerHTML = '<h1>Success!</h1><p>Authentication successful! You can close this window.</p>';
+            }
           </script>
+          <h1>Success!</h1>
           <p>Authentication successful! You can close this window.</p>
         </body>
       </html>
@@ -186,8 +220,12 @@ serve(async (req) => {
       <html>
         <body>
           <script>
-            window.opener.postMessage({ type: 'twitter-auth-error', error: 'Authentication failed: ${error.message}' }, '*');
-            window.close();
+            if (window.opener) {
+              window.opener.postMessage({ type: 'twitter-auth-error', error: 'Authentication failed' }, '*');
+              window.close();
+            } else {
+              document.body.innerHTML = '<h1>Error</h1><p>Authentication failed: ${error.message}</p>';
+            }
           </script>
         </body>
       </html>
