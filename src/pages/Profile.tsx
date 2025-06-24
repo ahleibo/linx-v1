@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Search, Mic, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +13,7 @@ import {
 import { VoiceSearch } from '@/components/explore/VoiceSearch';
 import { ImportDialog } from '@/components/import/ImportDialog';
 import { UrlImportDialog } from '@/components/import/UrlImportDialog';
+import { TwitterBookmarkImport } from '@/components/import/TwitterBookmarkImport';
 import { ProfileSettings } from '@/components/profile/ProfileSettings';
 import { useAuth } from '@/hooks/useAuth';
 import { usePosts } from '@/hooks/usePosts';
@@ -99,6 +99,12 @@ const Profile = () => {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Twitter Bookmark Import Section */}
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold">Import from Twitter</h3>
+          <TwitterBookmarkImport />
         </div>
 
         {/* Search Bar */}
