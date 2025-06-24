@@ -25,7 +25,9 @@ async function generateCodeChallenge(verifier: string) {
 }
 
 serve(async (req) => {
-  console.log('Twitter auth function called with method:', req.method);
+  console.log('=== TWITTER AUTH FUNCTION STARTED ===');
+  console.log('Request method:', req.method);
+  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
 
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -38,9 +40,12 @@ serve(async (req) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+    console.log('Supabase URL:', supabaseUrl);
+    console.log('Anon key available:', !!supabaseAnonKey);
+
     // Get user from Authorization header
     const authHeader = req.headers.get('Authorization');
-    console.log('Auth header found:', !!authHeader);
+    console.log('Auth header present:', !!authHeader);
     
     if (!authHeader) {
       console.error('No authorization header found');
@@ -55,10 +60,16 @@ serve(async (req) => {
 
     // Extract token from Bearer header
     const token = authHeader.replace('Bearer ', '');
-    console.log('Token extracted:', !!token);
+    console.log('Token extracted successfully');
 
     // Get user from auth token using the anon client
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    console.log('User lookup result:', { 
+      found: !!user, 
+      userId: user?.id, 
+      error: authError?.message 
+    });
 
     if (authError || !user) {
       console.error('Authentication failed:', authError?.message || 'No user found');
@@ -71,13 +82,19 @@ serve(async (req) => {
       );
     }
 
-    console.log('User authenticated:', user.id);
+    console.log('User authenticated successfully:', user.id);
 
     // Get Twitter API credentials
     const clientId = Deno.env.get('TWITTER_CLIENT_ID');
     const clientSecret = Deno.env.get('TWITTER_CLIENT_SECRET');
     
+    console.log('Twitter credentials check:', { 
+      clientId: clientId ? 'present' : 'missing', 
+      clientSecret: clientSecret ? 'present' : 'missing' 
+    });
+    
     if (!clientId || !clientSecret) {
+      console.error('Missing Twitter API credentials');
       return new Response(
         JSON.stringify({ error: 'Twitter API credentials not configured' }),
         { 
@@ -88,22 +105,26 @@ serve(async (req) => {
     }
 
     // Generate OAuth URL for Twitter with proper PKCE
-    const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/twitter-callback`;
+    const redirectUri = `${supabaseUrl}/functions/v1/twitter-callback`;
     const state = `${user.id}_${Date.now()}`;
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = await generateCodeChallenge(codeVerifier);
     
-    console.log('Generated PKCE parameters:', { 
+    console.log('OAuth parameters:', { 
+      redirectUri,
       state, 
-      codeVerifier: !!codeVerifier, 
-      codeChallenge: !!codeChallenge 
+      codeVerifier: 'generated', 
+      codeChallenge: 'generated' 
     });
     
     // Use service role key for database operations
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
     
+    console.log('Service key available:', !!supabaseServiceKey);
+    
     // Store code verifier in database for later verification
+    console.log('Storing auth session in database...');
     const { error: storeError } = await adminSupabase
       .from('twitter_auth_sessions')
       .upsert({
@@ -124,6 +145,8 @@ serve(async (req) => {
       );
     }
     
+    console.log('Auth session stored successfully');
+    
     // Twitter OAuth 2.0 with proper PKCE
     const authUrl = `https://twitter.com/i/oauth2/authorize?` + 
       `response_type=code&` +
@@ -134,7 +157,9 @@ serve(async (req) => {
       `code_challenge=${codeChallenge}&` +
       `code_challenge_method=S256`;
 
-    console.log('Generated Twitter OAuth URL with SHA256 PKCE');
+    console.log('Generated Twitter OAuth URL');
+    console.log('Auth URL:', authUrl);
+    console.log('=== TWITTER AUTH FUNCTION COMPLETED ===');
 
     return new Response(
       JSON.stringify({ authUrl }),
@@ -145,7 +170,9 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Twitter auth error:', error);
+    console.error('=== TWITTER AUTH ERROR ===');
+    console.error('Error details:', error);
+    console.error('Stack trace:', error.stack);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { 
