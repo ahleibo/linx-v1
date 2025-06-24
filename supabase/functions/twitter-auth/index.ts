@@ -26,6 +26,7 @@ async function generateCodeChallenge(verifier: string) {
 
 serve(async (req) => {
   console.log('Twitter auth function called with method:', req.method);
+  console.log('Headers:', Object.fromEntries(req.headers.entries()));
 
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -39,10 +40,13 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get user from Authorization header
-    const authHeader = req.headers.get('Authorization');
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
+    console.log('Auth header found:', !!authHeader);
+    
     if (!authHeader) {
+      console.error('No authorization header found');
       return new Response(
-        JSON.stringify({ error: 'Authorization header required' }),
+        JSON.stringify({ error: 'Missing authorization header' }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 401 
@@ -50,10 +54,12 @@ serve(async (req) => {
       );
     }
 
+    // Extract token from Bearer header
+    const token = authHeader.replace('Bearer ', '');
+    console.log('Token extracted:', !!token);
+
     // Get user from auth token
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
       console.error('Authentication failed:', authError);
@@ -65,6 +71,8 @@ serve(async (req) => {
         }
       );
     }
+
+    console.log('User authenticated:', user.id);
 
     // Get Twitter API credentials
     const clientId = Deno.env.get('TWITTER_CLIENT_ID');
