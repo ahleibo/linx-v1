@@ -1,13 +1,20 @@
 
 import React, { useState } from 'react';
-import { Search, Mic, TrendingUp } from 'lucide-react';
+import { Search, Mic, TrendingUp, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { VoiceSearch } from '@/components/explore/VoiceSearch';
 import { ImportDialog } from '@/components/import/ImportDialog';
+import { UrlImportDialog } from '@/components/import/UrlImportDialog';
 import { TweetCard } from '@/components/posts/TweetCard';
 import { usePosts } from '@/hooks/usePosts';
 import { useAuth } from '@/hooks/useAuth';
@@ -45,7 +52,27 @@ const Homepage = () => {
               {user?.user_metadata?.full_name || 'Explorer'}
             </p>
           </div>
-          <ImportDialog onSuccess={handleImportSuccess} />
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Plus className="h-4 w-4 mr-2" />
+                Import Post
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-slate-800 border-slate-700 text-white">
+              <DropdownMenuItem className="focus:bg-slate-700" asChild>
+                <UrlImportDialog 
+                  trigger={
+                    <div className="w-full cursor-pointer">
+                      Import from URL
+                    </div>
+                  }
+                  onSuccess={handleImportSuccess} 
+                />
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -129,7 +156,7 @@ const Homepage = () => {
                   <div>
                     <p className="mb-2">No posts yet</p>
                     <p className="text-sm text-slate-500 mb-4">Import your first X post to get started</p>
-                    <ImportDialog
+                    <UrlImportDialog
                       trigger={
                         <Button variant="outline" className="border-slate-600 text-slate-300 hover:bg-slate-700">
                           Import Your First Post

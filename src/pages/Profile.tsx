@@ -1,12 +1,19 @@
 
 import React, { useState } from 'react';
-import { Search, Mic, ChevronRight } from 'lucide-react';
+import { Search, Mic, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { VoiceSearch } from '@/components/explore/VoiceSearch';
 import { ImportDialog } from '@/components/import/ImportDialog';
+import { UrlImportDialog } from '@/components/import/UrlImportDialog';
 import { ProfileSettings } from '@/components/profile/ProfileSettings';
 import { useAuth } from '@/hooks/useAuth';
 import { usePosts } from '@/hooks/usePosts';
@@ -46,14 +53,26 @@ const Profile = () => {
         <div className="flex items-center justify-between p-4">
           <h1 className="text-2xl font-bold">Profile</h1>
           <div className="flex items-center space-x-2">
-            <ImportDialog 
-              trigger={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="border-slate-600 text-slate-300 hover:bg-slate-700">
+                  <Plus className="h-4 w-4 mr-2" />
                   Import Post
                 </Button>
-              }
-              onSuccess={handleImportSuccess} 
-            />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-slate-800 border-slate-700 text-white">
+                <DropdownMenuItem className="focus:bg-slate-700" asChild>
+                  <UrlImportDialog 
+                    trigger={
+                      <div className="w-full cursor-pointer">
+                        Import from URL
+                      </div>
+                    }
+                    onSuccess={handleImportSuccess} 
+                  />
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <ProfileSettings />
           </div>
         </div>
