@@ -45,7 +45,7 @@ serve(async (req) => {
     const userId = state.split('_')[0];
     console.log('Extracted user ID:', userId);
     
-    // Exchange code for access token
+    // Exchange code for access token using OAuth 2.0
     const clientId = Deno.env.get('TWITTER_CLIENT_ID');
     const clientSecret = Deno.env.get('TWITTER_CLIENT_SECRET');
     const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/twitter-callback`;
@@ -70,17 +70,20 @@ serve(async (req) => {
       `, { headers: { 'Content-Type': 'text/html' } });
     }
 
+    // Create Basic Auth header
+    const credentials = btoa(`${clientId}:${clientSecret}`);
+    
     const tokenResponse = await fetch('https://api.twitter.com/2/oauth2/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${btoa(`${clientId}:${clientSecret}`)}`
+        'Authorization': `Basic ${credentials}`
       },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code: code,
         redirect_uri: redirectUri,
-        code_verifier: 'challenge', // Twitter OAuth 2.0 requires this
+        code_verifier: 'challenge',
       })
     });
 
@@ -94,7 +97,7 @@ serve(async (req) => {
         <html>
           <body>
             <script>
-              window.opener.postMessage({ type: 'twitter-auth-error', error: 'Token exchange failed' }, '*');
+              window.opener.postMessage({ type: 'twitter-auth-error', error: 'Token exchange failed: ${responseText}' }, '*');
               window.close();
             </script>
           </body>
@@ -155,7 +158,7 @@ serve(async (req) => {
       <html>
         <body>
           <script>
-            window.opener.postMessage({ type: 'twitter-auth-error', error: 'Authentication failed' }, '*');
+            window.opener.postMessage({ type: 'twitter-auth-error', error: 'Authentication failed: ${error.message}' }, '*');
             window.close();
           </script>
         </body>
