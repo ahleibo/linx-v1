@@ -35,13 +35,14 @@ serve(async (req) => {
   }
 
   try {
-    // Get Supabase client with anon key for user validation
+    // Get Supabase configuration
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
     console.log('Supabase URL:', supabaseUrl);
     console.log('Anon key available:', !!supabaseAnonKey);
+    console.log('Service key available:', !!supabaseServiceKey);
 
     // Get user from Authorization header
     const authHeader = req.headers.get('Authorization');
@@ -62,8 +63,17 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
     console.log('Token extracted successfully');
 
-    // Get user from auth token using the anon client
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    // Create supabase client with the user's token
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+        },
+      },
+    });
+
+    // Get user from auth token
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     console.log('User lookup result:', { 
       found: !!user, 
@@ -118,10 +128,7 @@ serve(async (req) => {
     });
     
     // Use service role key for database operations
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    console.log('Service key available:', !!supabaseServiceKey);
     
     // Store code verifier in database for later verification
     console.log('Storing auth session in database...');

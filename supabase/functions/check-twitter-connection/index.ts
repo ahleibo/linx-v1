@@ -13,13 +13,14 @@ serve(async (req) => {
   }
 
   try {
-    // Get Supabase client with anon key for user validation
+    // Get Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
     console.log('Supabase URL:', supabaseUrl);
     console.log('Anon key available:', !!supabaseAnonKey);
+    console.log('Service key available:', !!supabaseServiceKey);
 
     // Get user from Authorization header
     const authHeader = req.headers.get('Authorization');
@@ -40,8 +41,17 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
     console.log('Token extracted:', !!token);
 
-    // Get user from auth token using the anon client
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    // Create supabase client with the user's token
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+        },
+      },
+    });
+
+    // Get user from auth token
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     console.log('User lookup result:', { 
       found: !!user, 
@@ -62,11 +72,8 @@ serve(async (req) => {
 
     console.log('User authenticated:', user.id);
 
-    // Use service role key for database queries
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    // Use service role client for database queries
     const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    console.log('Service key available:', !!supabaseServiceKey);
 
     // Check if user has a Twitter connection
     console.log('Checking Twitter connection for user:', user.id);
