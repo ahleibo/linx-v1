@@ -76,12 +76,12 @@ serve(async (req) => {
       `, { headers: { 'Content-Type': 'text/html' } });
     }
 
-    // Get Supabase client
+    // Get Supabase client with service role key (no user auth needed for callback)
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get stored auth session
+    // Get stored auth session using state parameter
     const { data: authSession, error: sessionError } = await supabase
       .from('twitter_auth_sessions')
       .select('user_id, code_verifier')
