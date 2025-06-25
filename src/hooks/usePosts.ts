@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { postService } from '@/services/postService';
 import { aiService } from '@/services/aiService';
 import { useToast } from '@/hooks/use-toast';
+import { semanticSearch } from '@/services/semanticSearchService';
 
 export function usePosts() {
   const { toast } = useToast();
@@ -22,21 +23,21 @@ export function usePosts() {
   // Search posts
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Search all posts (for explore page)
+  // Search all posts (for explore page) - now with semantic search
   const { data: allSearchResults = [], isLoading: isSearchingAll } = useQuery({
     queryKey: ['posts', 'search', 'all', searchQuery],
     queryFn: () => postService.searchAllPosts(searchQuery),
     enabled: searchQuery.length > 0,
   });
 
-  // Search user's own posts (for profile page)
+  // Search user's own posts (for profile page) - now with semantic search
   const { data: userSearchResults = [], isLoading: isSearchingUser } = useQuery({
     queryKey: ['posts', 'search', 'user', searchQuery],
     queryFn: () => postService.searchUserPosts(searchQuery),
     enabled: searchQuery.length > 0,
   });
 
-  // Search recent posts from network (for homepage)
+  // Search recent posts from network (for homepage) - now with semantic search
   const { data: networkSearchResults = [], isLoading: isSearchingNetwork } = useQuery({
     queryKey: ['posts', 'search', 'network', searchQuery],
     queryFn: () => postService.searchNetworkPosts(searchQuery),
@@ -77,13 +78,9 @@ export function usePosts() {
     }
   });
 
-  // Filter posts locally based on search query (for immediate results)
+  // Enhanced local semantic filtering as fallback
   const filteredPosts = searchQuery 
-    ? posts.filter(post => 
-        post.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.author_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.author_username?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? semanticSearch.searchPosts(posts, searchQuery)
     : posts;
 
   return {

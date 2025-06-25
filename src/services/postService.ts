@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { semanticSearch } from './semanticSearchService';
 import type { Database } from '@/integrations/supabase/types';
 
 type Post = Database['public']['Tables']['posts']['Row'];
@@ -30,8 +31,8 @@ export const postService = {
     return data;
   },
 
-  // Search all posts (for explore page)
-  async searchAllPosts(query: string, limit = 20) {
+  // Enhanced semantic search for all posts (for explore page)
+  async searchAllPosts(query: string, limit = 50) {
     const { data, error } = await supabase
       .from('posts')
       .select(`
@@ -44,16 +45,18 @@ export const postService = {
           )
         )
       `)
-      .or(`content.ilike.%${query}%,author_name.ilike.%${query}%,author_username.ilike.%${query}%`)
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .limit(limit * 2); // Get more posts to have better semantic filtering
 
     if (error) throw error;
-    return data;
+    
+    // Apply semantic search
+    const results = semanticSearch.searchPosts(data || [], query);
+    return results.slice(0, limit);
   },
 
-  // Search user's own posts (for profile page)
-  async searchUserPosts(query: string, limit = 20) {
+  // Enhanced semantic search for user's own posts (for profile page)
+  async searchUserPosts(query: string, limit = 50) {
     const { data: { user } } = await supabase.auth.getUser();
     
     const { data, error } = await supabase
@@ -69,20 +72,23 @@ export const postService = {
         )
       `)
       .eq('user_id', user?.id)
-      .or(`content.ilike.%${query}%,author_name.ilike.%${query}%,author_username.ilike.%${query}%`)
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .limit(limit * 2); // Get more posts for better semantic filtering
 
     if (error) throw error;
-    return data;
+    
+    // Apply semantic search
+    const results = semanticSearch.searchPosts(data || [], query);
+    return results.slice(0, limit);
   },
 
-  // Search network posts (for homepage - currently same as all posts, but could be refined)
-  async searchNetworkPosts(query: string, limit = 20) {
+  // Enhanced semantic search for network posts (for homepage)
+  async searchNetworkPosts(query: string, limit = 50) {
+    // For now, same as all posts, but could be refined to include user's network
     return this.searchAllPosts(query, limit);
   },
 
-  // Legacy search method (keeping for backward compatibility)
+  // Legacy search method (keeping for backward compatibility) - now uses semantic search
   async searchPosts(query: string, limit = 20) {
     return this.searchAllPosts(query, limit);
   },
