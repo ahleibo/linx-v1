@@ -23,6 +23,7 @@ serve(async (req) => {
     if (error) {
       console.error('Twitter OAuth error:', error);
       return new Response(`
+        <!DOCTYPE html>
         <html>
           <head><title>Authentication Error</title></head>
           <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
@@ -40,7 +41,13 @@ serve(async (req) => {
             <p><button onclick="window.close()">Close Window</button></p>
           </body>
         </html>
-      `, { headers: { 'Content-Type': 'text/html' } });
+      `, { 
+        headers: { 
+          'Content-Type': 'text/html',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        } 
+      });
     }
 
     // Check required parameters
@@ -48,6 +55,7 @@ serve(async (req) => {
       console.error('Missing required parameters:', { code: !!code, state: !!state });
       const errorMsg = `Missing ${!code ? 'code' : 'state'} parameter`;
       return new Response(`
+        <!DOCTYPE html>
         <html>
           <head><title>Authentication Error</title></head>
           <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
@@ -65,12 +73,18 @@ serve(async (req) => {
             <p><button onclick="window.close()">Close Window</button></p>
           </body>
         </html>
-      `, { headers: { 'Content-Type': 'text/html' } });
+      `, { 
+        headers: { 
+          'Content-Type': 'text/html',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        } 
+      });
     }
 
     console.log('Valid OAuth callback received, processing...');
 
-    // Initialize Supabase with service role key (no auth required for callback)
+    // Initialize Supabase with service role key for database operations
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
@@ -97,6 +111,7 @@ serve(async (req) => {
       console.error('Invalid or expired auth session:', sessionError);
       const errorMsg = 'Invalid or expired authentication session';
       return new Response(`
+        <!DOCTYPE html>
         <html>
           <head><title>Authentication Error</title></head>
           <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
@@ -115,7 +130,13 @@ serve(async (req) => {
             <p><button onclick="window.close()">Close Window</button></p>
           </body>
         </html>
-      `, { headers: { 'Content-Type': 'text/html' } });
+      `, { 
+        headers: { 
+          'Content-Type': 'text/html',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        } 
+      });
     }
 
     const userId = authSession.user_id;
@@ -138,6 +159,7 @@ serve(async (req) => {
       console.error('Missing Twitter credentials');
       const errorMsg = 'Server configuration error - missing Twitter credentials';
       return new Response(`
+        <!DOCTYPE html>
         <html>
           <head><title>Server Error</title></head>
           <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
@@ -155,7 +177,13 @@ serve(async (req) => {
             <p><button onclick="window.close()">Close Window</button></p>
           </body>
         </html>
-      `, { headers: { 'Content-Type': 'text/html' } });
+      `, { 
+        headers: { 
+          'Content-Type': 'text/html',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        } 
+      });
     }
 
     // Create Basic Auth header for Twitter API
@@ -187,6 +215,7 @@ serve(async (req) => {
       console.error('Token exchange failed:', responseText);
       const errorMsg = 'Failed to exchange authorization code for access token';
       return new Response(`
+        <!DOCTYPE html>
         <html>
           <head><title>Authentication Error</title></head>
           <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
@@ -208,7 +237,13 @@ serve(async (req) => {
             <p><button onclick="window.close()">Close Window</button></p>
           </body>
         </html>
-      `, { headers: { 'Content-Type': 'text/html' } });
+      `, { 
+        headers: { 
+          'Content-Type': 'text/html',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        } 
+      });
     }
 
     const tokenData = JSON.parse(responseText);
@@ -230,6 +265,7 @@ serve(async (req) => {
       console.error('Database error storing connection:', dbError);
       const errorMsg = 'Failed to save Twitter connection';
       return new Response(`
+        <!DOCTYPE html>
         <html>
           <head><title>Database Error</title></head>
           <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
@@ -248,7 +284,13 @@ serve(async (req) => {
             <p><button onclick="window.close()">Close Window</button></p>
           </body>
         </html>
-      `, { headers: { 'Content-Type': 'text/html' } });
+      `, { 
+        headers: { 
+          'Content-Type': 'text/html',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        } 
+      });
     }
 
     // Clean up auth session
@@ -262,6 +304,7 @@ serve(async (req) => {
 
     // Return success page that communicates with parent window
     return new Response(`
+      <!DOCTYPE html>
       <html>
         <head>
           <title>Authentication Success</title>
@@ -351,7 +394,13 @@ serve(async (req) => {
           <button onclick="window.close()">Close Window</button>
         </body>
       </html>
-    `, { headers: { 'Content-Type': 'text/html' } });
+    `, { 
+      headers: { 
+        'Content-Type': 'text/html',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+      } 
+    });
 
   } catch (error) {
     console.error('=== TWITTER CALLBACK ERROR ===');
@@ -360,6 +409,7 @@ serve(async (req) => {
     
     const errorMsg = `Unexpected error: ${error.message}`;
     return new Response(`
+      <!DOCTYPE html>
       <html>
         <head><title>Unexpected Error</title></head>
         <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
@@ -376,7 +426,13 @@ serve(async (req) => {
           </script>
           <p><button onclick="window.close()">Close Window</button></p>
         </body>
-      </html>
-    `, { headers: { 'Content-Type': 'text/html' } });
+        </html>
+    `, { 
+      headers: { 
+        'Content-Type': 'text/html',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+      } 
+    });
   }
 });
