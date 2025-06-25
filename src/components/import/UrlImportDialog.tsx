@@ -24,6 +24,7 @@ export const UrlImportDialog = ({ trigger, onSuccess }: UrlImportDialogProps) =>
   const [url, setUrl] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error' | 'existing' | 'rateLimit'>('idle');
+  const [errorDetails, setErrorDetails] = useState<string>('');
   const { toast } = useToast();
 
   const handleImport = async () => {
@@ -38,6 +39,7 @@ export const UrlImportDialog = ({ trigger, onSuccess }: UrlImportDialogProps) =>
 
     setIsImporting(true);
     setImportStatus('idle');
+    setErrorDetails('');
 
     try {
       const result = await XPostImportService.importFromUrl(url);
@@ -63,16 +65,36 @@ export const UrlImportDialog = ({ trigger, onSuccess }: UrlImportDialogProps) =>
           setImportStatus('idle');
         }, 1500);
       } else {
-        // Check for specific error types
-        if (result.error?.includes('rate limit')) {
+        setImportStatus('error');
+        setErrorDetails(result.error || 'Unknown error occurred');
+        
+        // Check for specific error types for better user feedback
+        if (result.error?.includes('authentication failed')) {
+          toast({
+            title: "Authentication Error",
+            description: "Twitter API authentication failed. Please contact support.",
+            variant: "destructive",
+          });
+        } else if (result.error?.includes('rate limit')) {
           setImportStatus('rateLimit');
           toast({
             title: "Rate Limit Exceeded",
-            description: "Too many requests. Please wait a few minutes and try again.",
+            description: "Too many requests. Please wait 15 minutes and try again.",
+            variant: "destructive",
+          });
+        } else if (result.error?.includes('not found')) {
+          toast({
+            title: "Post Not Found",
+            description: "This post doesn't exist or has been deleted.",
+            variant: "destructive",
+          });
+        } else if (result.error?.includes('private') || result.error?.includes('restricted')) {
+          toast({
+            title: "Access Denied",
+            description: "This post is private or restricted. Only public posts can be imported.",
             variant: "destructive",
           });
         } else {
-          setImportStatus('error');
           toast({
             title: "Import Failed",
             description: result.error || "Failed to import post",
@@ -82,6 +104,7 @@ export const UrlImportDialog = ({ trigger, onSuccess }: UrlImportDialogProps) =>
       }
     } catch (error) {
       setImportStatus('error');
+      setErrorDetails('An unexpected error occurred');
       toast({
         title: "Import Error",
         description: "An unexpected error occurred",
@@ -189,10 +212,19 @@ export const UrlImportDialog = ({ trigger, onSuccess }: UrlImportDialogProps) =>
             {getButtonContent()}
           </Button>
 
+          {/* Error Details */}
+          {importStatus === 'error' && errorDetails && (
+            <div className="text-xs text-red-400 bg-red-400/10 p-3 rounded-lg">
+              <p className="font-medium mb-1">❌ Import failed</p>
+              <p className="break-words">{errorDetails}</p>
+            </div>
+          )}
+
+          {/* Rate Limit Info */}
           {importStatus === 'rateLimit' && (
             <div className="text-xs text-orange-400 bg-orange-400/10 p-3 rounded-lg">
               <p className="font-medium mb-1">⏳ Rate limit reached</p>
-              <p>The Twitter API has temporary usage limits. Please wait a few minutes before trying again.</p>
+              <p>The Twitter API has temporary usage limits. Please wait 15 minutes before trying again.</p>
             </div>
           )}
 
