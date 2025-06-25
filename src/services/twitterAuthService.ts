@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export class TwitterAuthService {
@@ -113,18 +112,18 @@ export class TwitterAuthService {
             
             if (resolved) return;
             
-            // Validate message origin for security
-            if (event.origin !== window.location.origin && !event.origin.includes('supabase.co')) {
-              console.log('Ignoring message from unknown origin:', event.origin);
+            // More permissive origin check - allow any origin for the callback
+            if (!event.data || typeof event.data !== 'object') {
+              console.log('Invalid message format:', event.data);
               return;
             }
             
-            if (event.data?.type === 'twitter-auth-success') {
+            if (event.data.type === 'twitter-auth-success') {
               console.log('Twitter auth successful');
               resolved = true;
               cleanup();
               resolve({ success: true });
-            } else if (event.data?.type === 'twitter-auth-error') {
+            } else if (event.data.type === 'twitter-auth-error') {
               console.error('Twitter auth error from popup:', event.data.error);
               resolved = true;
               cleanup();

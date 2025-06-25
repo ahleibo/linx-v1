@@ -40,11 +40,15 @@ serve(async (req) => {
             <h1>Authentication Error</h1>
             <p style="color: red;">OAuth Error: ${error}</p>
             <script>
-              if (window.opener && !window.opener.closed) {
-                window.opener.postMessage({ 
-                  type: 'twitter-auth-error', 
-                  error: '${error}' 
-                }, '*');
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage({ 
+                    type: 'twitter-auth-error', 
+                    error: '${error}' 
+                  }, '*');
+                }
+              } catch (e) {
+                console.error('Error posting message:', e);
               }
               setTimeout(() => window.close(), 3000);
             </script>
@@ -71,11 +75,15 @@ serve(async (req) => {
             <h1>Authentication Error</h1>
             <p style="color: red;">${errorMsg}</p>
             <script>
-              if (window.opener && !window.opener.closed) {
-                window.opener.postMessage({ 
-                  type: 'twitter-auth-error', 
-                  error: '${errorMsg}' 
-                }, '*');
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage({ 
+                    type: 'twitter-auth-error', 
+                    error: '${errorMsg}' 
+                  }, '*');
+                }
+              } catch (e) {
+                console.error('Error posting message:', e);
               }
               setTimeout(() => window.close(), 3000);
             </script>
@@ -99,7 +107,12 @@ serve(async (req) => {
     console.log('Supabase URL:', supabaseUrl);
     console.log('Service key available:', !!supabaseServiceKey);
     
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
 
     // Get stored auth session using state parameter
     console.log('Looking up auth session for state:', state);
@@ -125,13 +138,16 @@ serve(async (req) => {
           <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
             <h1>Authentication Error</h1>
             <p style="color: red;">${errorMsg}</p>
-            <p style="color: #666; font-size: 14px;">Session lookup failed: ${sessionError?.message || 'Session not found'}</p>
             <script>
-              if (window.opener && !window.opener.closed) {
-                window.opener.postMessage({ 
-                  type: 'twitter-auth-error', 
-                  error: '${errorMsg}' 
-                }, '*');
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage({ 
+                    type: 'twitter-auth-error', 
+                    error: '${errorMsg}' 
+                  }, '*');
+                }
+              } catch (e) {
+                console.error('Error posting message:', e);
               }
               setTimeout(() => window.close(), 3000);
             </script>
@@ -173,11 +189,15 @@ serve(async (req) => {
             <h1>Server Error</h1>
             <p style="color: red;">${errorMsg}</p>
             <script>
-              if (window.opener && !window.opener.closed) {
-                window.opener.postMessage({ 
-                  type: 'twitter-auth-error', 
-                  error: '${errorMsg}' 
-                }, '*');
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage({ 
+                    type: 'twitter-auth-error', 
+                    error: '${errorMsg}' 
+                  }, '*');
+                }
+              } catch (e) {
+                console.error('Error posting message:', e);
               }
               setTimeout(() => window.close(), 3000);
             </script>
@@ -227,16 +247,16 @@ serve(async (req) => {
           <body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
             <h1>Authentication Error</h1>
             <p style="color: red;">${errorMsg}</p>
-            <details style="margin: 20px 0;">
-              <summary>Technical Details</summary>
-              <pre style="text-align: left; background: #f5f5f5; padding: 10px; border-radius: 4px;">${responseText}</pre>
-            </details>
             <script>
-              if (window.opener && !window.opener.closed) {
-                window.opener.postMessage({ 
-                  type: 'twitter-auth-error', 
-                  error: '${errorMsg}' 
-                }, '*');
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage({ 
+                    type: 'twitter-auth-error', 
+                    error: '${errorMsg}' 
+                  }, '*');
+                }
+              } catch (e) {
+                console.error('Error posting message:', e);
               }
               setTimeout(() => window.close(), 3000);
             </script>
@@ -254,16 +274,21 @@ serve(async (req) => {
     const tokenData = JSON.parse(responseText);
     console.log('Successfully received tokens from Twitter');
     
-    // Store tokens in database
+    // Store tokens in database using service role
     console.log('Storing Twitter connection in database...');
+    const expiresAt = new Date(Date.now() + (tokenData.expires_in || 7200) * 1000).toISOString();
+    
     const { error: dbError } = await supabase
       .from('twitter_connections')
       .upsert({
         user_id: userId,
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token || null,
-        expires_at: new Date(Date.now() + (tokenData.expires_in || 7200) * 1000).toISOString(),
-        connected_at: new Date().toISOString()
+        expires_at: expiresAt,
+        connected_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id'
       });
 
     if (dbError) {
@@ -278,11 +303,15 @@ serve(async (req) => {
             <p style="color: red;">${errorMsg}</p>
             <p style="color: #666; font-size: 14px;">Error: ${dbError.message}</p>
             <script>
-              if (window.opener && !window.opener.closed) {
-                window.opener.postMessage({ 
-                  type: 'twitter-auth-error', 
-                  error: '${errorMsg}' 
-                }, '*');
+              try {
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage({ 
+                    type: 'twitter-auth-error', 
+                    error: '${errorMsg}' 
+                  }, '*');
+                }
+              } catch (e) {
+                console.error('Error posting message:', e);
               }
               setTimeout(() => window.close(), 3000);
             </script>
@@ -296,6 +325,8 @@ serve(async (req) => {
         } 
       });
     }
+
+    console.log('Twitter connection stored successfully');
 
     // Clean up auth session
     console.log('Cleaning up auth session...');
@@ -419,11 +450,15 @@ serve(async (req) => {
           <h1>Unexpected Error</h1>
           <p style="color: red;">${errorMsg}</p>
           <script>
-            if (window.opener && !window.opener.closed) {
-              window.opener.postMessage({ 
-                type: 'twitter-auth-error', 
-                error: 'Unexpected authentication error' 
-              }, '*');
+            try {
+              if (window.opener && !window.opener.closed) {
+                window.opener.postMessage({ 
+                  type: 'twitter-auth-error', 
+                  error: 'Unexpected authentication error' 
+                }, '*');
+              }
+            } catch (e) {
+              console.error('Error posting message:', e);
             }
             setTimeout(() => window.close(), 3000);
           </script>
