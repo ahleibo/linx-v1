@@ -86,11 +86,17 @@ export class TwitterAuthService {
       if (data?.authUrl) {
         console.log('Opening Twitter OAuth window:', data.authUrl);
         
+        // Calculate popup position to center it
+        const width = 600;
+        const height = 700;
+        const left = window.screen.width / 2 - width / 2;
+        const top = window.screen.height / 2 - height / 2;
+        
         // Open Twitter OAuth in new window with better popup settings
         const popup = window.open(
           data.authUrl, 
           'twitter-auth', 
-          'width=600,height=700,scrollbars=yes,resizable=yes,menubar=no,toolbar=no,location=no,status=no'
+          `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes,menubar=no,toolbar=no,location=no,status=no`
         );
         
         if (!popup) {
@@ -100,11 +106,18 @@ export class TwitterAuthService {
         // Return promise that resolves when auth completes
         return new Promise((resolve) => {
           let resolved = false;
+          let messageListenerAdded = false;
           
           const handleMessage = (event: MessageEvent) => {
             console.log('Received message from popup:', event.data);
             
             if (resolved) return;
+            
+            // Validate message origin for security
+            if (event.origin !== window.location.origin && !event.origin.includes('supabase.co')) {
+              console.log('Ignoring message from unknown origin:', event.origin);
+              return;
+            }
             
             if (event.data?.type === 'twitter-auth-success') {
               console.log('Twitter auth successful');
@@ -120,13 +133,18 @@ export class TwitterAuthService {
           };
           
           const cleanup = () => {
-            window.removeEventListener('message', handleMessage);
+            if (messageListenerAdded) {
+              window.removeEventListener('message', handleMessage);
+              messageListenerAdded = false;
+            }
             if (checkClosedInterval) {
               clearInterval(checkClosedInterval);
             }
           };
           
+          // Add message listener
           window.addEventListener('message', handleMessage);
+          messageListenerAdded = true;
           
           // Check if popup was closed manually
           const checkClosedInterval = setInterval(() => {
@@ -135,12 +153,15 @@ export class TwitterAuthService {
               if (!resolved) {
                 resolved = true;
                 cleanup();
-                resolve({ success: false, error: 'Authentication was cancelled. Please try again.' });
+                resolve({ success: false, error: 'Authentication was cancelled. Please try again and complete the Twitter authorization process.' });
               }
             }
           }, 1000);
           
-          // Timeout after 5 minutes
+          // Focus the popup window
+          popup.focus();
+          
+          // Timeout after 10 minutes (Twitter OAuth can take a while)
           setTimeout(() => {
             if (!resolved) {
               console.log('Authentication timeout');
@@ -151,7 +172,7 @@ export class TwitterAuthService {
               }
               resolve({ success: false, error: 'Authentication timed out. Please try again.' });
             }
-          }, 300000); // 5 minutes
+          }, 600000); // 10 minutes
         });
       }
 
