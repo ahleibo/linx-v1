@@ -37,18 +37,23 @@ serve(async (req) => {
       );
     }
 
+    console.log('Fetching tweet with ID:', tweetId);
+
     // Get Twitter Bearer Token from environment
     const bearerToken = Deno.env.get('TWITTER_BEARER_TOKEN');
     if (!bearerToken) {
       console.error('Twitter Bearer Token not configured');
       return new Response(
-        JSON.stringify({ error: 'Twitter API not configured. Please contact support.' }),
+        JSON.stringify({ error: 'Twitter API authentication not configured. Please set TWITTER_BEARER_TOKEN secret.' }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 500 
         }
       );
     }
+
+    console.log('Bearer token available:', !!bearerToken);
+    console.log('Bearer token length:', bearerToken.length);
 
     // Twitter API v2 endpoint with expansions for complete data
     const twitterUrl = new URL(`https://api.twitter.com/2/tweets/${tweetId}`);
@@ -98,7 +103,7 @@ serve(async (req) => {
       'public_metrics'
     ].join(','));
 
-    console.log('Fetching from Twitter API:', twitterUrl.toString());
+    console.log('Making request to Twitter API:', twitterUrl.toString());
 
     // Make request to Twitter API
     const response = await fetch(twitterUrl.toString(), {
@@ -106,16 +111,20 @@ serve(async (req) => {
       headers: {
         'Authorization': `Bearer ${bearerToken}`,
         'Content-Type': 'application/json',
+        'User-Agent': 'LiNX-v2.0'
       },
     });
 
+    console.log('Twitter API response status:', response.status);
+    console.log('Twitter API response headers:', Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Twitter API error:', response.status, errorText);
+      console.error('Twitter API error response:', response.status, errorText);
       
       if (response.status === 401) {
         return new Response(
-          JSON.stringify({ error: 'Twitter API authentication failed. Please contact support.' }),
+          JSON.stringify({ error: 'Twitter API authentication failed. Please check if TWITTER_BEARER_TOKEN is valid and has the correct permissions.' }),
           { 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 401 
@@ -157,7 +166,7 @@ serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ error: `Unable to fetch post (Error ${response.status}). Please try again later.` }),
+        JSON.stringify({ error: `Twitter API error (${response.status}): ${errorText}` }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: response.status 
@@ -166,7 +175,7 @@ serve(async (req) => {
     }
 
     const twitterData: TwitterApiResponse = await response.json();
-    console.log('Twitter API response received successfully');
+    console.log('Twitter API response received successfully:', JSON.stringify(twitterData, null, 2));
 
     if (twitterData.errors && twitterData.errors.length > 0) {
       console.error('Twitter API errors:', twitterData.errors);

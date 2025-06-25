@@ -26,14 +26,14 @@ serve(async (req) => {
   }
 
   try {
-    // Get Supabase client
+    // Get Supabase client with service role key for better permissions
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get user from Authorization header
     const authHeader = req.headers.get('Authorization');
-    console.log('Authorization header:', authHeader ? 'Present' : 'Missing');
+    console.log('Authorization header present:', !!authHeader);
     
     if (!authHeader) {
       return new Response(
@@ -46,9 +46,8 @@ serve(async (req) => {
     }
 
     // Get user from auth token
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
       console.error('Authentication failed:', authError);
@@ -120,8 +119,11 @@ serve(async (req) => {
       likes_count: postData.likesCount || 0,
       retweets_count: postData.retweetsCount || 0,
       replies_count: postData.repliesCount || 0,
-      x_url: postData.xUrl
+      x_url: postData.xUrl,
+      import_source: 'url_import'
     };
+
+    console.log('Inserting post data:', insertData);
 
     // Insert the post
     const { data: savedPost, error: insertError } = await supabase
@@ -149,7 +151,7 @@ serve(async (req) => {
       
       console.error('Error saving post:', insertError);
       return new Response(
-        JSON.stringify({ error: 'Failed to save post' }),
+        JSON.stringify({ error: 'Failed to save post to database' }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 500 
@@ -174,7 +176,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Unexpected error:', error);
+    console.error('Unexpected error in save-post function:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { 
