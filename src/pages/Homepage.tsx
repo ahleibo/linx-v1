@@ -21,7 +21,15 @@ import { useAuth } from '@/hooks/useAuth';
 
 const Homepage = () => {
   const { user } = useAuth();
-  const { posts, searchQuery, setSearchQuery, isLoading } = usePosts();
+  const { 
+    posts, 
+    filteredPosts,
+    networkSearchResults,
+    isSearchingNetwork,
+    searchQuery, 
+    setSearchQuery, 
+    isLoading 
+  } = usePosts();
   const [showVoiceSearch, setShowVoiceSearch] = useState(false);
 
   const handleVoiceResult = (transcript: string) => {
@@ -40,6 +48,11 @@ const Homepage = () => {
     { name: 'Startups', count: 15, color: 'bg-green-500' },
     { name: 'Productivity', count: 12, color: 'bg-orange-500' }
   ];
+
+  // Determine which posts to show based on search
+  const postsToShow = searchQuery 
+    ? (networkSearchResults.length > 0 ? networkSearchResults : filteredPosts)
+    : posts;
 
   return (
     <div className="min-h-screen bg-slate-950 text-white pb-20">
@@ -96,36 +109,52 @@ const Homepage = () => {
           </Button>
         </div>
 
-        {/* Trending Topics */}
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <TrendingUp className="h-5 w-5 text-blue-400" />
-            <h2 className="text-lg font-semibold">Trending in Your Network</h2>
+        {/* Search Results Header */}
+        {searchQuery && (
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">
+              Search Results for "{searchQuery}"
+            </h2>
+            <Badge variant="secondary" className="bg-blue-500/20 text-blue-400">
+              {postsToShow.length} results
+            </Badge>
           </div>
-          
-          <div className="grid grid-cols-2 gap-3">
-            {trendingTopics.map((topic) => (
-              <Card key={topic.name} className="bg-slate-800/30 border-slate-700 hover:bg-slate-800/50 transition-colors cursor-pointer">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className={`w-3 h-3 rounded-full ${topic.color}`} />
-                    <Badge variant="secondary" className="bg-slate-700/50 text-slate-300 text-xs">
-                      {topic.count}
-                    </Badge>
-                  </div>
-                  <h3 className="font-medium text-white text-sm">{topic.name}</h3>
-                  <p className="text-xs text-slate-400 mt-1">posts this week</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
+        )}
 
-        {/* Recent Posts Feed */}
+        {/* Trending Topics (only show when not searching) */}
+        {!searchQuery && (
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <TrendingUp className="h-5 w-5 text-blue-400" />
+              <h2 className="text-lg font-semibold">Trending in Your Network</h2>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              {trendingTopics.map((topic) => (
+                <Card key={topic.name} className="bg-slate-800/30 border-slate-700 hover:bg-slate-800/50 transition-colors cursor-pointer">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className={`w-3 h-3 rounded-full ${topic.color}`} />
+                      <Badge variant="secondary" className="bg-slate-700/50 text-slate-300 text-xs">
+                        {topic.count}
+                      </Badge>
+                    </div>
+                    <h3 className="font-medium text-white text-sm">{topic.name}</h3>
+                    <p className="text-xs text-slate-400 mt-1">posts this week</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Posts Feed */}
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Recent from Your Network</h2>
+          {!searchQuery && (
+            <h2 className="text-lg font-semibold">Recent from Your Network</h2>
+          )}
           
-          {isLoading ? (
+          {(isLoading || isSearchingNetwork) ? (
             <div className="space-y-3">
               {[...Array(3)].map((_, i) => (
                 <Card key={i} className="bg-slate-800/30 border-slate-700 animate-pulse">
@@ -142,12 +171,24 @@ const Homepage = () => {
                 </Card>
               ))}
             </div>
-          ) : posts.length > 0 ? (
+          ) : postsToShow.length > 0 ? (
             <div className="space-y-3">
-              {posts.slice(0, 5).map((post) => (
+              {postsToShow.slice(0, 10).map((post) => (
                 <TweetCard key={post.id} post={post} />
               ))}
             </div>
+          ) : searchQuery ? (
+            <Card className="bg-slate-800/30 border-slate-700">
+              <CardContent className="p-8 text-center">
+                <div className="text-slate-400 space-y-4">
+                  <Search className="h-12 w-12 mx-auto mb-3" />
+                  <div>
+                    <p className="mb-2">No posts found for "{searchQuery}"</p>
+                    <p className="text-sm text-slate-500">Try different keywords or import more posts</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           ) : (
             <Card className="bg-slate-800/30 border-slate-700">
               <CardContent className="p-8 text-center">

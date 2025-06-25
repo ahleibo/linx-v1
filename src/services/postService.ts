@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -9,6 +8,8 @@ type Topic = Database['public']['Tables']['topics']['Row'];
 export const postService = {
   // Get posts for the current user's feed
   async getUserPosts(limit = 20, offset = 0) {
+    const { data: { user } } = await supabase.auth.getUser();
+    
     const { data, error } = await supabase
       .from('posts')
       .select(`
@@ -21,6 +22,7 @@ export const postService = {
           )
         )
       `)
+      .eq('user_id', user?.id)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -28,8 +30,8 @@ export const postService = {
     return data;
   },
 
-  // Search posts by content or topics
-  async searchPosts(query: string, limit = 20) {
+  // Search all posts (for explore page)
+  async searchAllPosts(query: string, limit = 20) {
     const { data, error } = await supabase
       .from('posts')
       .select(`
@@ -42,12 +44,47 @@ export const postService = {
           )
         )
       `)
-      .or(`content.ilike.%${query}%,author_name.ilike.%${query}%`)
+      .or(`content.ilike.%${query}%,author_name.ilike.%${query}%,author_username.ilike.%${query}%`)
       .order('created_at', { ascending: false })
       .limit(limit);
 
     if (error) throw error;
     return data;
+  },
+
+  // Search user's own posts (for profile page)
+  async searchUserPosts(query: string, limit = 20) {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    const { data, error } = await supabase
+      .from('posts')
+      .select(`
+        *,
+        post_topics (
+          topics (
+            id,
+            name,
+            color
+          )
+        )
+      `)
+      .eq('user_id', user?.id)
+      .or(`content.ilike.%${query}%,author_name.ilike.%${query}%,author_username.ilike.%${query}%`)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Search network posts (for homepage - currently same as all posts, but could be refined)
+  async searchNetworkPosts(query: string, limit = 20) {
+    return this.searchAllPosts(query, limit);
+  },
+
+  // Legacy search method (keeping for backward compatibility)
+  async searchPosts(query: string, limit = 20) {
+    return this.searchAllPosts(query, limit);
   },
 
   // Get a single post with all its data

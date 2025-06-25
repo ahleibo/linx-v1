@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Search, Mic, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,10 +26,10 @@ import { PostSearchResults } from '@/components/profile/PostSearchResults';
 const Profile = () => {
   const { user } = useAuth();
   const {
+    userSearchResults,
+    isSearchingUser,
     searchQuery,
-    setSearchQuery,
-    searchResults,
-    isSearching
+    setSearchQuery
   } = usePosts();
   const { stats, isLoading: statsLoading } = useProfileStats();
   const [showVoiceSearch, setShowVoiceSearch] = useState(false);
@@ -131,67 +132,73 @@ const Profile = () => {
           {searchQuery && (
             <PostSearchResults 
               query={searchQuery} 
-              results={searchResults} 
-              isLoading={isSearching} 
+              results={userSearchResults} 
+              isLoading={isSearchingUser} 
             />
           )}
         </div>
 
-        {/* Collections Section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold">Collections</h3>
-            <Button variant="ghost" size="sm" className="text-blue-400 hover:text-blue-300">
-              View All
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
+        {/* Collections Section (only show when not searching) */}
+        {!searchQuery && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold">Collections</h3>
+              <Button variant="ghost" size="sm" className="text-blue-400 hover:text-blue-300">
+                View All
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+            <CollectionGrid />
           </div>
-          <CollectionGrid />
-        </div>
+        )}
 
-        {/* Insights Section */}
-        <div className="space-y-4">
-          <h3 className="text-xl font-bold">Insights</h3>
-          <InsightsSection stats={stats} isLoading={statsLoading} />
-        </div>
+        {/* Insights Section (only show when not searching) */}
+        {!searchQuery && (
+          <div className="space-y-4">
+            <h3 className="text-xl font-bold">Insights</h3>
+            <InsightsSection stats={stats} isLoading={statsLoading} />
+          </div>
+        )}
 
-        {/* Activity Summary */}
-        <Card className="bg-slate-800/30 border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-white">Activity Summary</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-slate-700/30 rounded-lg">
-                <div className="text-2xl font-bold text-blue-400">
-                  {stats?.totalPosts || 0}
+        {/* Activity Summary (only show when not searching) */}
+        {!searchQuery && (
+          <Card className="bg-slate-800/30 border-slate-700">
+            <CardHeader>
+              <CardTitle className="text-white">Activity Summary</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-4 bg-slate-700/30 rounded-lg">
+                  <div className="text-2xl font-bold text-blue-400">
+                    {stats?.totalPosts || 0}
+                  </div>
+                  <div className="text-sm text-slate-400">Posts Saved</div>
                 </div>
-                <div className="text-sm text-slate-400">Posts Saved</div>
-              </div>
-              <div className="text-center p-4 bg-slate-700/30 rounded-lg">
-                <div className="text-2xl font-bold text-green-400">
-                  {stats?.totalCollections || 0}
+                <div className="text-center p-4 bg-slate-700/30 rounded-lg">
+                  <div className="text-2xl font-bold text-green-400">
+                    {stats?.totalCollections || 0}
+                  </div>
+                  <div className="text-sm text-slate-400">Collections</div>
                 </div>
-                <div className="text-sm text-slate-400">Collections</div>
               </div>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-400">This Month</span>
-                <span className="text-white">{stats?.monthlyPosts || 0} posts</span>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">This Month</span>
+                  <span className="text-white">{stats?.monthlyPosts || 0} posts</span>
+                </div>
+                <div className="w-full bg-slate-700 rounded-full h-2">
+                  <div 
+                    className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
+                    style={{
+                      width: `${Math.min((stats?.monthlyPosts || 0) / 50 * 100, 100)}%`
+                    }} 
+                  />
+                </div>
               </div>
-              <div className="w-full bg-slate-700 rounded-full h-2">
-                <div 
-                  className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
-                  style={{
-                    width: `${Math.min((stats?.monthlyPosts || 0) / 50 * 100, 100)}%`
-                  }} 
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Voice Search Modal */}

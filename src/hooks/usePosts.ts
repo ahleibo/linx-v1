@@ -21,9 +21,25 @@ export function usePosts() {
 
   // Search posts
   const [searchQuery, setSearchQuery] = useState('');
-  const { data: searchResults = [], isLoading: isSearching } = useQuery({
-    queryKey: ['posts', 'search', searchQuery],
-    queryFn: () => postService.searchPosts(searchQuery),
+  
+  // Search all posts (for explore page)
+  const { data: allSearchResults = [], isLoading: isSearchingAll } = useQuery({
+    queryKey: ['posts', 'search', 'all', searchQuery],
+    queryFn: () => postService.searchAllPosts(searchQuery),
+    enabled: searchQuery.length > 0,
+  });
+
+  // Search user's own posts (for profile page)
+  const { data: userSearchResults = [], isLoading: isSearchingUser } = useQuery({
+    queryKey: ['posts', 'search', 'user', searchQuery],
+    queryFn: () => postService.searchUserPosts(searchQuery),
+    enabled: searchQuery.length > 0,
+  });
+
+  // Search recent posts from network (for homepage)
+  const { data: networkSearchResults = [], isLoading: isSearchingNetwork } = useQuery({
+    queryKey: ['posts', 'search', 'network', searchQuery],
+    queryFn: () => postService.searchNetworkPosts(searchQuery),
     enabled: searchQuery.length > 0,
   });
 
@@ -61,12 +77,26 @@ export function usePosts() {
     }
   });
 
+  // Filter posts locally based on search query (for immediate results)
+  const filteredPosts = searchQuery 
+    ? posts.filter(post => 
+        post.content?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        post.author_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        post.author_username?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : posts;
+
   return {
     posts,
+    filteredPosts,
     isLoading,
     error,
-    searchResults,
-    isSearching,
+    allSearchResults,
+    userSearchResults,
+    networkSearchResults,
+    isSearchingAll,
+    isSearchingUser,
+    isSearchingNetwork,
     searchQuery,
     setSearchQuery,
     chatMutation,
