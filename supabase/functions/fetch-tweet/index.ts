@@ -39,14 +39,14 @@ serve(async (req) => {
 
     console.log('Fetching tweet with ID:', tweetId);
 
-    // Get Twitter Bearer Token from environment
-    const bearerToken = Deno.env.get('TWITTER_BEARER_TOKEN');
+    // Check for both possible token names - X_BEARER_TOKEN or TWITTER_BEARER_TOKEN
+    const bearerToken = Deno.env.get('X_BEARER_TOKEN') || Deno.env.get('TWITTER_BEARER_TOKEN');
     if (!bearerToken) {
-      console.error('Twitter Bearer Token not configured');
+      console.error('No Bearer Token found');
       return new Response(
         JSON.stringify({ 
           error: 'Twitter API not configured', 
-          details: 'TWITTER_BEARER_TOKEN secret is missing. Please add it in Supabase Dashboard > Settings > API > Edge Function Secrets.' 
+          details: 'Neither X_BEARER_TOKEN nor TWITTER_BEARER_TOKEN secret is set. Please add one of them in Supabase Dashboard > Settings > API > Edge Function Secrets.' 
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -57,11 +57,11 @@ serve(async (req) => {
 
     // Validate bearer token format
     if (!bearerToken.startsWith('AAAAAAAAAA')) {
-      console.error('Invalid Twitter Bearer Token format');
+      console.error('Invalid Bearer Token format');
       return new Response(
         JSON.stringify({ 
-          error: 'Invalid Twitter Bearer Token', 
-          details: 'The TWITTER_BEARER_TOKEN should start with "AAAAAAAAAA". Please check your token in the Twitter Developer Portal.' 
+          error: 'Invalid Bearer Token', 
+          details: 'The Bearer Token should start with "AAAAAAAAAA". Please check your token in the Twitter Developer Portal.' 
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -142,7 +142,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             error: 'Twitter API authentication failed', 
-            details: 'Your TWITTER_BEARER_TOKEN is invalid or expired. Please:\n1. Go to Twitter Developer Portal\n2. Regenerate your Bearer Token\n3. Update the TWITTER_BEARER_TOKEN secret in Supabase\n4. Wait 2 minutes and try again' 
+            details: 'Your Bearer Token is invalid or expired. Please:\n1. Go to Twitter Developer Portal\n2. Regenerate your Bearer Token\n3. Update the X_BEARER_TOKEN or TWITTER_BEARER_TOKEN secret in Supabase\n4. Wait 2 minutes and try again' 
           }),
           { 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
