@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Homepage from "./pages/Homepage";
-import Profile from "./pages/Profile";
+import { Profile } from "./pages/Profile";
 import Explore from "./pages/Explore";
 import { TwitterCallback } from "./pages/TwitterCallback";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
