@@ -149,16 +149,16 @@ export const InsightsSection: React.FC<InsightsSectionProps> = ({ stats, isLoadi
         </Card>
       ))}
 
-      {/* Summary Card */}
-      <Card className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-slate-700">
-        <CardContent className="p-4">
+      {/* Summary Card with improved accessibility */}
+      <Card className="bg-slate-800 border-slate-600">
+        <CardContent className="p-6">
           <div className="text-center">
             <div className="text-2xl font-bold text-white mb-1">
               {stats.totalPosts > 100 ? 'Knowledge Expert' :
                stats.totalPosts > 50 ? 'Active Curator' :
                stats.totalPosts > 10 ? 'Rising Collector' : 'Getting Started'}
             </div>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-200">
               You've saved {stats.totalPosts} posts across {stats.totalCollections} collections
             </p>
           </div>
