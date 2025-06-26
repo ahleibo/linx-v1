@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import Homepage from "./pages/Homepage";
 import Explore from "./pages/Explore";
 import Profile from "./pages/Profile";
+import Collections from "./pages/Collections";
 import NotFound from "./pages/NotFound";
 import BottomNavigation from "./components/navigation/BottomNavigation";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
@@ -41,6 +42,11 @@ const AppContent = () => {
         <Route path="/profile" element={
           <ProtectedRoute>
             <Profile />
+          </ProtectedRoute>
+        } />
+        <Route path="/collections" element={
+          <ProtectedRoute>
+            <Collections />
           </ProtectedRoute>
         } />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

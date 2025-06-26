@@ -22,9 +22,11 @@ import { useProfileStats } from '@/hooks/useProfileStats';
 import { CollectionGrid } from '@/components/profile/CollectionGrid';
 import { InsightsSection } from '@/components/profile/InsightsSection';
 import { PostSearchResults } from '@/components/profile/PostSearchResults';
+import { useNavigate } from 'react-router-dom';
 
 const Profile = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const {
     userSearchResults,
     isSearchingUser,
@@ -143,7 +145,12 @@ const Profile = () => {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold">Collections</h3>
-              <Button variant="ghost" size="sm" className="text-blue-400 hover:text-blue-300">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => navigate('/collections')}
+                className="text-blue-400 hover:text-blue-300"
+              >
                 View All
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
