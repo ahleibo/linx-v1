@@ -37,10 +37,10 @@ export function usePublicProfiles() {
             });
 
             // Parse the JSON stats data and ensure it matches our expected structure
-            const parsedStats = statsData && typeof statsData === 'object' ? {
-              total_posts: Number(statsData.total_posts) || 0,
-              total_collections: Number(statsData.total_collections) || 0,
-              member_since: Number(statsData.member_since) || new Date().getFullYear()
+            const parsedStats = statsData && typeof statsData === 'object' && !Array.isArray(statsData) ? {
+              total_posts: Number((statsData as any).total_posts) || 0,
+              total_collections: Number((statsData as any).total_collections) || 0,
+              member_since: Number((statsData as any).member_since) || new Date().getFullYear()
             } : null;
 
             return {
@@ -80,10 +80,10 @@ export function usePublicProfile(userId: string) {
         });
 
         // Parse the JSON stats data and ensure it matches our expected structure
-        const parsedStats = statsData && typeof statsData === 'object' ? {
-          total_posts: Number(statsData.total_posts) || 0,
-          total_collections: Number(statsData.total_collections) || 0,
-          member_since: Number(statsData.member_since) || new Date().getFullYear()
+        const parsedStats = statsData && typeof statsData === 'object' && !Array.isArray(statsData) ? {
+          total_posts: Number((statsData as any).total_posts) || 0,
+          total_collections: Number((statsData as any).total_collections) || 0,
+          member_since: Number((statsData as any).member_since) || new Date().getFullYear()
         } : null;
 
         return {
