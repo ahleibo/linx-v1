@@ -13,7 +13,7 @@ interface PublicProfile {
     total_posts: number;
     total_collections: number;
     member_since: number;
-  };
+  } | null;
 }
 
 export function usePublicProfiles() {
@@ -31,14 +31,29 @@ export function usePublicProfiles() {
       // Fetch stats for each profile
       const profilesWithStats = await Promise.all(
         data.map(async (profile) => {
-          const { data: statsData } = await supabase.rpc('get_user_public_stats', {
-            user_uuid: profile.id
-          });
+          try {
+            const { data: statsData } = await supabase.rpc('get_user_public_stats', {
+              user_uuid: profile.id
+            });
 
-          return {
-            ...profile,
-            stats: statsData
-          };
+            // Parse the JSON stats data and ensure it matches our expected structure
+            const parsedStats = statsData && typeof statsData === 'object' ? {
+              total_posts: Number(statsData.total_posts) || 0,
+              total_collections: Number(statsData.total_collections) || 0,
+              member_since: Number(statsData.member_since) || new Date().getFullYear()
+            } : null;
+
+            return {
+              ...profile,
+              stats: parsedStats
+            };
+          } catch (error) {
+            console.error('Error fetching stats for profile:', profile.id, error);
+            return {
+              ...profile,
+              stats: null
+            };
+          }
         })
       );
 
@@ -59,14 +74,29 @@ export function usePublicProfile(userId: string) {
 
       if (error) throw error;
 
-      const { data: statsData } = await supabase.rpc('get_user_public_stats', {
-        user_uuid: userId
-      });
+      try {
+        const { data: statsData } = await supabase.rpc('get_user_public_stats', {
+          user_uuid: userId
+        });
 
-      return {
-        ...data,
-        stats: statsData
-      };
+        // Parse the JSON stats data and ensure it matches our expected structure
+        const parsedStats = statsData && typeof statsData === 'object' ? {
+          total_posts: Number(statsData.total_posts) || 0,
+          total_collections: Number(statsData.total_collections) || 0,
+          member_since: Number(statsData.member_since) || new Date().getFullYear()
+        } : null;
+
+        return {
+          ...data,
+          stats: parsedStats
+        };
+      } catch (error) {
+        console.error('Error fetching stats for profile:', userId, error);
+        return {
+          ...data,
+          stats: null
+        };
+      }
     },
     enabled: !!userId,
   });
