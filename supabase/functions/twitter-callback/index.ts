@@ -107,12 +107,7 @@ serve(async (req) => {
     console.log('Supabase URL:', supabaseUrl);
     console.log('Service key available:', !!supabaseServiceKey);
     
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    });
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get stored auth session using state parameter
     console.log('Looking up auth session for state:', state);
