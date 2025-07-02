@@ -1,1 +1,7 @@
 project_id = "jayfyarydzkycjzciblj"
+
+[functions.twitter-auth]
+verify_jwt = false
+
+[functions.twitter-callback]
+verify_jwt = false
