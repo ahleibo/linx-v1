@@ -59,9 +59,11 @@ serve(async (req) => {
       );
     }
 
-    // Fetch bookmarks from Twitter API
+    console.log('Fetching bookmarks from Twitter API...');
+    
+    // Fetch bookmarks from Twitter API (using X.com domain)
     const bookmarksResponse = await fetch(
-      'https://api.twitter.com/2/users/me/bookmarks?' +
+      'https://api.x.com/2/users/me/bookmarks?' +
       'tweet.fields=id,text,author_id,created_at,public_metrics,entities,attachments&' +
       'expansions=author_id,attachments.media_keys&' +
       'user.fields=id,username,name,profile_image_url&' +
@@ -73,6 +75,8 @@ serve(async (req) => {
         },
       }
     );
+
+    console.log('Twitter API response status:', bookmarksResponse.status);
 
     if (!bookmarksResponse.ok) {
       const errorText = await bookmarksResponse.text();
