@@ -101,11 +101,44 @@ serve(async (req) => {
       );
     }
 
+    console.log('Fetching user info from Twitter API first...');
+
+    // First, get the authenticated user's info to get their Twitter ID
+    const userResponse = await fetch('https://api.twitter.com/2/users/me', {
+      headers: {
+        'Authorization': `Bearer ${connection.access_token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!userResponse.ok) {
+      const userErrorText = await userResponse.text();
+      console.error('Failed to get user info:', {
+        status: userResponse.status,
+        statusText: userResponse.statusText,
+        body: userErrorText
+      });
+      return new Response(
+        JSON.stringify({ 
+          error: `Failed to authenticate with Twitter: ${userResponse.status} - ${userResponse.statusText}`,
+          details: userErrorText
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: userResponse.status 
+        }
+      );
+    }
+
+    const userData = await userResponse.json();
+    const twitterUserId = userData.data.id;
+    console.log('Got Twitter user ID:', twitterUserId);
+
     console.log('Fetching bookmarks from Twitter API...');
 
-    // Fetch bookmarks from Twitter API
+    // Now fetch bookmarks using the correct endpoint with user ID
     const bookmarksResponse = await fetch(
-      'https://api.twitter.com/2/users/me/bookmarks?' +
+      `https://api.twitter.com/2/users/${twitterUserId}/bookmarks?` +
       'max_results=5&' +  // Reduced to 5 to minimize rate limit impact
       'tweet.fields=id,text,author_id,created_at,public_metrics,entities,attachments&' +
       'expansions=author_id,attachments.media_keys&' +
