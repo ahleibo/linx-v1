@@ -384,12 +384,40 @@ serve(async (req) => {
               if (messageSent) return;
               
               try {
+                console.log('Checking for opener window...');
+                console.log('window.opener exists:', !!window.opener);
+                console.log('window.opener.closed:', window.opener ? window.opener.closed : 'N/A');
+                
                 if (window.opener && !window.opener.closed) {
                   console.log('Sending success message to parent window');
-                  window.opener.postMessage({ 
+                  const message = { 
                     type: 'twitter-auth-success',
                     timestamp: Date.now()
-                  }, '*');
+                  };
+                  console.log('Sending message:', message);
+                  
+                  // Try multiple target origins to ensure delivery
+                  try {
+                    window.opener.postMessage(message, '*');
+                    console.log('Message sent with origin *');
+                  } catch (e) {
+                    console.error('Error sending message with origin *:', e);
+                  }
+                  
+                  try {
+                    window.opener.postMessage(message, window.location.origin);
+                    console.log('Message sent with window.location.origin');
+                  } catch (e) {
+                    console.error('Error sending message with window.location.origin:', e);
+                  }
+                  
+                  try {
+                    window.opener.postMessage(message, 'https://fa65e9ba-f273-4b35-ad6e-383b62f6dcc0.lovableproject.com');
+                    console.log('Message sent to lovableproject.com');
+                  } catch (e) {
+                    console.error('Error sending message to lovableproject.com:', e);
+                  }
+                  
                   messageSent = true;
                   console.log('Success message sent successfully');
                   

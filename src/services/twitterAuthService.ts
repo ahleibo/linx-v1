@@ -107,10 +107,18 @@ export class TwitterAuthService {
           let resolved = false;
           let messageListenerAdded = false;
           
+          
           const handleMessage = (event: MessageEvent) => {
-            console.log('Received message from popup:', event.data);
+            console.log('=== MESSAGE RECEIVED FROM POPUP ===');
+            console.log('Event origin:', event.origin);
+            console.log('Event data:', event.data);
+            console.log('Event source:', event.source);
+            console.log('Resolved state:', resolved);
             
-            if (resolved) return;
+            if (resolved) {
+              console.log('Already resolved, ignoring message');
+              return;
+            }
             
             // More permissive origin check - allow any origin for the callback
             if (!event.data || typeof event.data !== 'object') {
@@ -119,7 +127,7 @@ export class TwitterAuthService {
             }
             
             if (event.data.type === 'twitter-auth-success') {
-              console.log('Twitter auth successful');
+              console.log('=== TWITTER AUTH SUCCESS MESSAGE RECEIVED ===');
               resolved = true;
               cleanup();
               resolve({ success: true });
@@ -128,6 +136,8 @@ export class TwitterAuthService {
               resolved = true;
               cleanup();
               resolve({ success: false, error: event.data.error || 'Authentication failed' });
+            } else {
+              console.log('Unknown message type:', event.data.type);
             }
           };
           
