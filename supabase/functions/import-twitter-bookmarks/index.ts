@@ -101,12 +101,12 @@ serve(async (req) => {
       );
     }
 
-    console.log('Twitter connection valid, fetching bookmarks...');
+    console.log('Fetching bookmarks from Twitter API...');
 
     // Fetch bookmarks from Twitter API
     const bookmarksResponse = await fetch(
       'https://api.x.com/2/users/me/bookmarks?' +
-      'max_results=20&' +
+      'max_results=5&' +  // Reduced to 5 to minimize rate limit impact
       'tweet.fields=id,text,author_id,created_at,public_metrics,entities,attachments&' +
       'expansions=author_id,attachments.media_keys&' +
       'user.fields=id,username,name,profile_image_url&' +
@@ -129,6 +129,26 @@ serve(async (req) => {
         statusText: bookmarksResponse.statusText,
         body: errorText
       });
+      
+      // Handle rate limiting specifically
+      if (bookmarksResponse.status === 429) {
+        const resetHeader = bookmarksResponse.headers.get('x-rate-limit-reset');
+        const resetTime = resetHeader ? new Date(parseInt(resetHeader) * 1000) : null;
+        const waitTime = resetTime ? Math.ceil((resetTime.getTime() - Date.now()) / 1000 / 60) : 15;
+        
+        return new Response(
+          JSON.stringify({ 
+            error: `Twitter API rate limit exceeded. Please wait ${waitTime} minutes before trying again.`,
+            details: 'Twitter limits bookmark requests. Try again later.',
+            rateLimited: true,
+            waitMinutes: waitTime
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 429 
+          }
+        );
+      }
       
       return new Response(
         JSON.stringify({ 

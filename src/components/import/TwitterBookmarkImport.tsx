@@ -83,11 +83,20 @@ export const TwitterBookmarkImport = () => {
         description: `Successfully imported ${result.imported || 0} bookmarked posts.`,
       });
     } else {
-      toast({
-        title: "Import Failed",
-        description: result.error || "Failed to import bookmarks",
-        variant: "destructive",
-      });
+      // Check if it's a rate limit error
+      if (result.error && result.error.includes('rate limit')) {
+        toast({
+          title: "Rate Limit Exceeded",
+          description: "Twitter has temporarily limited bookmark requests. Please wait 15 minutes before trying again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Import Failed",
+          description: result.error || "Failed to import bookmarks",
+          variant: "destructive",
+        });
+      }
     }
     
     setIsImporting(false);
