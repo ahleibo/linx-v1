@@ -105,7 +105,7 @@ serve(async (req) => {
 
     // Fetch bookmarks from Twitter API
     const bookmarksResponse = await fetch(
-      'https://api.x.com/2/users/me/bookmarks?' +
+      'https://api.twitter.com/2/users/me/bookmarks?' +
       'max_results=5&' +  // Reduced to 5 to minimize rate limit impact
       'tweet.fields=id,text,author_id,created_at,public_metrics,entities,attachments&' +
       'expansions=author_id,attachments.media_keys&' +
