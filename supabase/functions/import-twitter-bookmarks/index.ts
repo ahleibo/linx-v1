@@ -61,9 +61,10 @@ serve(async (req) => {
 
     console.log('Fetching bookmarks from Twitter API...');
     
-    // Fetch bookmarks from Twitter API (using X.com domain)
+    // Fetch bookmarks from Twitter API (using X.com domain) - limit to 20 most recent
     const bookmarksResponse = await fetch(
       'https://api.x.com/2/users/me/bookmarks?' +
+      'max_results=20&' +
       'tweet.fields=id,text,author_id,created_at,public_metrics,entities,attachments&' +
       'expansions=author_id,attachments.media_keys&' +
       'user.fields=id,username,name,profile_image_url&' +
