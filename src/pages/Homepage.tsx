@@ -10,7 +10,7 @@ import { VoiceSearch } from '@/components/explore/VoiceSearch';
 import { ImportDialog } from '@/components/import/ImportDialog';
 import { UrlImportDialog } from '@/components/import/UrlImportDialog';
 import { TweetCard } from '@/components/posts/TweetCard';
-import { AiChatInterface } from '@/components/ai/AiChatInterface';
+import { UnifiedSearch } from '@/components/search/UnifiedSearch';
 import { usePosts } from '@/hooks/usePosts';
 import { useTrendingTopics } from '@/hooks/useTrendingTopics';
 import { useAuth } from '@/hooks/useAuth';
@@ -70,35 +70,25 @@ const Homepage = () => {
         </div>
       </div>
 
-      <div className="p-4 space-y-6">
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-5 w-5" />
-          <Input placeholder="Search your knowledge base..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 pr-12 bg-slate-800/50 border-slate-700 text-white placeholder-slate-400 focus:border-blue-500 h-12" />
-          <Button variant="ghost" size="sm" onClick={() => setShowVoiceSearch(true)} className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white">
-            <Mic className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Search Results Header */}
-        {searchQuery && <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">
-              Search Results for "{searchQuery}"
-            </h2>
-            <Badge variant="secondary" className="bg-blue-500/20 text-blue-400">
-              {postsToShow.length} results
-            </Badge>
-          </div>}
+      <div className="p-6 space-y-8">
+        {/* Unified Search Interface */}
+        <UnifiedSearch 
+          onSearch={setSearchQuery}
+          searchResults={postsToShow}
+          isSearching={isLoading || isSearchingNetwork}
+        />
 
         {/* Trending Topics (only show when not searching and there are topics) */}
-        {!searchQuery && !isLoadingTopics && trendingTopics.length > 0 && <div className="space-y-4">
+        {!searchQuery && !isLoadingTopics && trendingTopics.length > 0 && (
+          <div className="space-y-4">
             <div className="flex items-center space-x-2">
               <TrendingUp className="h-5 w-5 text-blue-400" />
-              <h2 className="text-lg font-semibold">Trending in Your Network</h2>
+              <h2 className="text-xl font-semibold">Trending in Your Network</h2>
             </div>
             
-            <div className="grid grid-cols-2 gap-3">
-              {trendingTopics.map(topic => <Card key={topic.name} className="bg-slate-800/30 border-slate-700 hover:bg-slate-800/50 transition-colors cursor-pointer">
+            <div className="grid grid-cols-2 gap-4">
+              {trendingTopics.map(topic => (
+                <Card key={topic.name} className="bg-slate-900/30 border-slate-700 hover:bg-slate-800/50 transition-all cursor-pointer">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
                       <div 
@@ -112,15 +102,9 @@ const Homepage = () => {
                     <h3 className="font-medium text-white text-sm">{topic.name}</h3>
                     <p className="text-xs text-slate-400 mt-1">posts this week</p>
                   </CardContent>
-                </Card>)}
+                </Card>
+              ))}
             </div>
-          </div>}
-
-        {/* AI Chat Interface (show when there are posts) */}
-        {!searchQuery && posts.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Ask AI about your posts</h2>
-            <AiChatInterface />
           </div>
         )}
 
