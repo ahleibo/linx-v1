@@ -132,7 +132,7 @@ URL: ${post.x_url}`;
 
     // Prepare prompt for Gemini
     const prompt = `
-You are an AI assistant that helps users understand and analyze their saved social media posts. You have access to their personal collection of posts and can answer questions about them.
+You are an AI assistant that helps users understand their saved social media posts. Be concise and direct - keep responses to 2-3 sentences unless specifically asked for more detail.
 
 User's Question: "${question}"
 
@@ -140,14 +140,11 @@ Available Posts Context:
 ${postsContext}
 
 Instructions:
-1. Analyze the user's question and the provided posts
-2. Provide a comprehensive answer based on the content of their saved posts
-3. Include specific references to relevant posts by their number [1], [2], etc.
-4. If the question cannot be answered from the available posts, explain what information is missing
-5. Be conversational and helpful, like Perplexity AI
-6. Include insights, patterns, or connections you notice across the posts
-
-Format your response as a well-structured answer that directly addresses the user's question.
+1. Analyze the user's question and provide a brief, focused answer
+2. Include specific references to relevant posts by their number [1], [2], etc.
+3. Keep your response concise - maximum 2-3 sentences
+4. Focus on the most important insights only
+5. If the question cannot be answered from available posts, briefly explain what's missing
 
 Answer:`;
 
@@ -167,7 +164,7 @@ Answer:`;
           temperature: 0.3,
           topK: 40,
           topP: 0.8,
-          maxOutputTokens: 1000,
+          maxOutputTokens: 300,
         }
       })
     });
