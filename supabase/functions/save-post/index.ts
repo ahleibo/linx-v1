@@ -161,6 +161,29 @@ serve(async (req) => {
 
     console.log('Post saved successfully:', savedPost.id);
 
+    // Auto-classify topics using Gemini in the background
+    try {
+      console.log('Starting automatic topic classification...');
+      const classifyResponse = await fetch(`https://jayfyarydzkycjzciblj.supabase.co/functions/v1/classify-post-topics`, {
+        method: 'POST',
+        headers: {
+          'Authorization': req.headers.get('Authorization') || '',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ postId: savedPost.id })
+      });
+
+      if (classifyResponse.ok) {
+        const classifyResult = await classifyResponse.json();
+        console.log('Topic classification successful:', classifyResult);
+      } else {
+        console.error('Topic classification failed:', await classifyResponse.text());
+      }
+    } catch (classifyError) {
+      console.error('Error during topic classification:', classifyError);
+      // Don't fail the entire request if classification fails
+    }
+
     // Return success response
     return new Response(
       JSON.stringify({ 

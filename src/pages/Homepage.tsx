@@ -10,6 +10,7 @@ import { VoiceSearch } from '@/components/explore/VoiceSearch';
 import { ImportDialog } from '@/components/import/ImportDialog';
 import { UrlImportDialog } from '@/components/import/UrlImportDialog';
 import { TweetCard } from '@/components/posts/TweetCard';
+import { AiChatInterface } from '@/components/ai/AiChatInterface';
 import { usePosts } from '@/hooks/usePosts';
 import { useTrendingTopics } from '@/hooks/useTrendingTopics';
 import { useAuth } from '@/hooks/useAuth';
@@ -114,6 +115,14 @@ const Homepage = () => {
                 </Card>)}
             </div>
           </div>}
+
+        {/* AI Chat Interface (show when there are posts) */}
+        {!searchQuery && posts.length > 0 && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">Ask AI about your posts</h2>
+            <AiChatInterface />
+          </div>
+        )}
 
         {/* Posts Feed */}
         <div className="space-y-4">

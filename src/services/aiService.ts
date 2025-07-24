@@ -1,4 +1,6 @@
 
+import { supabase } from '@/integrations/supabase/client';
+
 // Mock AI service for topic clustering and chat functionality
 // In production, this would integrate with OpenAI, Anthropic, or other LLM providers
 
@@ -13,6 +15,127 @@ export interface ChatResponse {
   relatedPosts?: any[];
 }
 
+export class AiService {
+  // Classify topics for a specific post using Gemini
+  static async classifyPostTopics(postId: string): Promise<{ success: boolean; error?: string; classifiedTopics?: string[] }> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        return { success: false, error: 'User not authenticated' };
+      }
+
+      const { data, error } = await supabase.functions.invoke('classify-post-topics', {
+        body: { postId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        }
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { 
+        success: true, 
+        classifiedTopics: data.classifiedTopics || []
+      };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Failed to classify topics' };
+    }
+  }
+
+  // Batch classify all posts without topics
+  static async batchClassifyAllPosts(): Promise<{ success: boolean; error?: string; processed?: number }> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        return { success: false, error: 'User not authenticated' };
+      }
+
+      // Get all posts without topics
+      const { data: posts, error: postsError } = await supabase
+        .from('posts')
+        .select(`
+          id,
+          post_topics(id)
+        `)
+        .eq('user_id', session.user.id)
+        .is('post_topics.id', null);
+
+      if (postsError) {
+        return { success: false, error: 'Failed to fetch posts' };
+      }
+
+      if (!posts || posts.length === 0) {
+        return { success: true, processed: 0 };
+      }
+
+      // Process posts in batches to avoid overwhelming the API
+      const batchSize = 5;
+      let processed = 0;
+      
+      for (let i = 0; i < posts.length; i += batchSize) {
+        const batch = posts.slice(i, i + batchSize);
+        
+        // Process batch in parallel
+        const promises = batch.map(post => this.classifyPostTopics(post.id));
+        const results = await Promise.allSettled(promises);
+        
+        // Count successful classifications
+        results.forEach(result => {
+          if (result.status === 'fulfilled' && result.value.success) {
+            processed++;
+          }
+        });
+
+        // Add delay between batches to respect rate limits
+        if (i + batchSize < posts.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+
+      return { success: true, processed };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Failed to batch classify posts' };
+    }
+  }
+
+  // Ask questions about posts using Gemini
+  static async askQuestion(question: string, searchTerms?: string[]): Promise<{ 
+    success: boolean; 
+    error?: string; 
+    answer?: string; 
+    sources?: any[];
+  }> {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        return { success: false, error: 'User not authenticated' };
+      }
+
+      const { data, error } = await supabase.functions.invoke('ai-chat-posts', {
+        body: { question, searchTerms },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        }
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { 
+        success: true, 
+        answer: data.answer,
+        sources: data.sources || []
+      };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Failed to process question' };
+    }
+  }
+}
+
+// Legacy mock service for backwards compatibility
 export const aiService = {
   // Mock topic clustering for posts
   async clusterPostTopics(content: string, authorName: string): Promise<TopicClusterResult[]> {
