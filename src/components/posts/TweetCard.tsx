@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { Heart, MessageCircle, Repeat2, Bookmark, ExternalLink, Calendar } from 'lucide-react';
+import React, { useState } from 'react';
+import { Heart, MessageCircle, Repeat2, Bookmark, ExternalLink, Calendar, Play, Pause } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +31,8 @@ interface TweetCardProps {
 }
 
 export const TweetCard = ({ post }: TweetCardProps) => {
+  const [playingVideo, setPlayingVideo] = useState<string | null>(null);
+
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
@@ -44,6 +46,59 @@ export const TweetCard = ({ post }: TweetCardProps) => {
       day: 'numeric',
       year: 'numeric'
     });
+  };
+
+  const isVideo = (url: string) => {
+    return /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url) || url.includes('video');
+  };
+
+  const handleVideoToggle = (url: string) => {
+    setPlayingVideo(playingVideo === url ? null : url);
+  };
+
+  const MediaItem = ({ url, index, total }: { url: string; index: number; total: number }) => {
+    const isVideoFile = isVideo(url);
+    
+    return (
+      <div className="relative rounded-xl overflow-hidden border border-slate-600/50 bg-slate-900/20 group">
+        {isVideoFile ? (
+          <div className="relative">
+            <video
+              src={url}
+              className="w-full h-full object-cover"
+              style={{ 
+                height: total === 1 ? 'auto' : '200px',
+                maxHeight: total === 1 ? '400px' : '200px'
+              }}
+              controls={playingVideo === url}
+              preload="metadata"
+              playsInline
+            />
+            {playingVideo !== url && (
+              <div 
+                className="absolute inset-0 flex items-center justify-center bg-black/50 cursor-pointer group-hover:bg-black/40 transition-colors"
+                onClick={() => handleVideoToggle(url)}
+              >
+                <div className="bg-white/90 rounded-full p-3 group-hover:bg-white group-hover:scale-110 transition-all">
+                  <Play className="h-6 w-6 text-black ml-0.5" fill="currentColor" />
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <img
+            src={url}
+            alt={`Post media ${index + 1}`}
+            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+            style={{ 
+              height: total === 1 ? 'auto' : '200px',
+              maxHeight: total === 1 ? '400px' : '200px'
+            }}
+            loading="lazy"
+          />
+        )}
+      </div>
+    );
   };
 
   return (
@@ -102,27 +157,53 @@ export const TweetCard = ({ post }: TweetCardProps) => {
 
           {/* Media */}
           {post.media_urls && post.media_urls.length > 0 && (
-            <div className="space-y-2">
+            <div className="my-3">
               {post.media_urls.length === 1 ? (
-                <div className="rounded-lg overflow-hidden border border-slate-600">
-                  <img
-                    src={post.media_urls[0]}
-                    alt="Post media"
-                    className="w-full h-auto max-h-96 object-cover"
-                    loading="lazy"
+                <MediaItem 
+                  url={post.media_urls[0]} 
+                  index={0} 
+                  total={1} 
+                />
+              ) : post.media_urls.length === 2 ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {post.media_urls.map((url, index) => (
+                    <MediaItem 
+                      key={index}
+                      url={url} 
+                      index={index} 
+                      total={2} 
+                    />
+                  ))}
+                </div>
+              ) : post.media_urls.length === 3 ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <MediaItem 
+                    url={post.media_urls[0]} 
+                    index={0} 
+                    total={3} 
                   />
+                  <div className="grid grid-rows-2 gap-2">
+                    <MediaItem 
+                      url={post.media_urls[1]} 
+                      index={1} 
+                      total={3} 
+                    />
+                    <MediaItem 
+                      url={post.media_urls[2]} 
+                      index={2} 
+                      total={3} 
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
                   {post.media_urls.slice(0, 4).map((url, index) => (
-                    <div key={index} className="rounded-lg overflow-hidden border border-slate-600">
-                      <img
-                        src={url}
-                        alt={`Post media ${index + 1}`}
-                        className="w-full h-32 object-cover"
-                        loading="lazy"
-                      />
-                    </div>
+                    <MediaItem 
+                      key={index}
+                      url={url} 
+                      index={index} 
+                      total={4} 
+                    />
                   ))}
                 </div>
               )}
