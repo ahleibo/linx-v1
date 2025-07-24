@@ -101,21 +101,6 @@ serve(async (req) => {
       );
     }
 
-    // Get pagination state
-    console.log('Getting pagination state...');
-    const { data: paginationState, error: paginationError } = await supabase
-      .from('import_pagination')
-      .select('next_token')
-      .eq('user_id', user.id)
-      .eq('import_type', 'twitter_bookmarks')
-      .single();
-
-    console.log('Pagination state:', { 
-      hasState: !!paginationState, 
-      hasToken: !!paginationState?.next_token,
-      error: paginationError?.message 
-    });
-
     console.log('Fetching user info from Twitter API first...');
 
     // First, get the authenticated user's info to get their Twitter ID
@@ -149,23 +134,18 @@ serve(async (req) => {
     const twitterUserId = userData.data.id;
     console.log('Got Twitter user ID:', twitterUserId);
 
-    console.log('Fetching bookmarks from Twitter API...');
+    console.log('Fetching the most recent bookmarks from Twitter API...');
 
-    // Build URL with pagination token if available
+    // Always fetch the most recent bookmarks (no pagination token)
+    // We'll fetch more than 5 to account for potential duplicates
     let bookmarksUrl = `https://api.twitter.com/2/users/${twitterUserId}/bookmarks?` +
-      'max_results=5&' +  // Reduced to 5 to minimize rate limit impact
+      'max_results=20&' +  // Fetch 20 to ensure we get 5 new ones after filtering
       'tweet.fields=id,text,author_id,created_at,public_metrics,entities,attachments&' +
       'expansions=author_id,attachments.media_keys&' +
       'user.fields=id,username,name,profile_image_url&' +
       'media.fields=media_key,type,url,preview_image_url,alt_text';
 
-    // Add pagination token if we have one (skip errors as it might be first import)
-    if (paginationState?.next_token) {
-      bookmarksUrl += `&pagination_token=${paginationState.next_token}`;
-      console.log('Using pagination token for next batch');
-    } else {
-      console.log('No pagination token - fetching most recent bookmarks');
-    }
+    console.log('Fetching most recent bookmarks (no pagination)');
 
     // Now fetch bookmarks using the correct endpoint with user ID
     const bookmarksResponse = await fetch(bookmarksUrl, {
@@ -236,9 +216,16 @@ serve(async (req) => {
     let skippedCount = 0;
     const errors = [];
 
-    // Process each bookmark
+    // Process each bookmark and stop after importing 5 new posts
+    const MAX_IMPORTS = 5;
     for (const tweet of tweets) {
       try {
+        // Stop if we've already imported 5 posts
+        if (importedCount >= MAX_IMPORTS) {
+          console.log(`Reached maximum import limit of ${MAX_IMPORTS} posts`);
+          break;
+        }
+
         console.log('Processing tweet:', tweet.id);
         
         // Find the author
@@ -311,33 +298,12 @@ serve(async (req) => {
       }
     }
 
-    // Save pagination state for next import
-    const nextToken = bookmarksData.meta?.next_token;
-    console.log('Saving pagination state, next_token:', nextToken);
-    
-    if (nextToken || paginationState) {
-      const { error: paginationSaveError } = await supabase
-        .from('import_pagination')
-        .upsert({
-          user_id: user.id,
-          import_type: 'twitter_bookmarks',
-          next_token: nextToken, // Will be null if no more pages
-          last_imported_at: new Date().toISOString()
-        });
-
-      if (paginationSaveError) {
-        console.error('Error saving pagination state:', paginationSaveError);
-      } else {
-        console.log('Pagination state saved successfully');
-      }
-    }
-
     console.log('Import completed:', {
       total: tweets.length,
       imported: importedCount,
       skipped: skippedCount,
       errors: errors.length,
-      hasMorePages: !!nextToken
+      maxImports: MAX_IMPORTS
     });
 
     return new Response(
@@ -346,7 +312,7 @@ serve(async (req) => {
         imported: importedCount,
         skipped: skippedCount,
         total: tweets.length,
-        hasMorePages: !!nextToken,
+        maxImports: MAX_IMPORTS,
         errors: errors.length > 0 ? errors : undefined
       }),
       { 
