@@ -37,6 +37,24 @@ export const UnifiedSearch = ({ onSearch, searchResults, isSearching }: UnifiedS
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  // Suggested questions for AI mode
+  const suggestedQuestions = [
+    "What are the main themes in my saved posts?",
+    "Show me posts about technology and AI",
+    "Summarize my most recent bookmarks",
+    "What did I save about design this week?",
+    "Find posts with the most engagement",
+    "What topics do I bookmark most often?"
+  ];
+
+  // Related questions that appear after AI responses
+  const relatedQuestions = [
+    "Tell me more about these topics",
+    "Show similar posts",
+    "What else did I save recently?",
+    "Find posts by the same authors"
+  ];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
@@ -99,6 +117,13 @@ export const UnifiedSearch = ({ onSearch, searchResults, isSearching }: UnifiedS
 
   const handleModeToggle = () => {
     setIsAiMode(!isAiMode);
+    setShowResults(false);
+    setResults([]);
+    inputRef.current?.focus();
+  };
+
+  const handleSuggestedQuestion = (question: string) => {
+    setInput(question);
     inputRef.current?.focus();
   };
 
@@ -158,6 +183,32 @@ export const UnifiedSearch = ({ onSearch, searchResults, isSearching }: UnifiedS
         </CardContent>
       </Card>
 
+      {/* Suggested Questions for AI Mode */}
+      {isAiMode && !showResults && (
+        <div className="space-y-4">
+          <div className="text-center space-y-2">
+            <h3 className="text-lg font-medium text-white">What would you like to know?</h3>
+            <p className="text-sm text-slate-400">Ask me anything about your saved posts</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {suggestedQuestions.map((question, index) => (
+              <Button
+                key={index}
+                variant="outline"
+                onClick={() => handleSuggestedQuestion(question)}
+                className="h-auto p-4 text-left justify-start bg-slate-900/30 border-slate-700 hover:bg-slate-800/50 hover:border-slate-600 text-slate-300 hover:text-white transition-all"
+              >
+                <div className="flex items-start gap-3">
+                  <Sparkles className="h-4 w-4 text-purple-400 flex-shrink-0 mt-0.5" />
+                  <span className="text-sm leading-relaxed">{question}</span>
+                </div>
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Results */}
       {showResults && results.length > 0 && (
         <div className="space-y-4">
@@ -206,6 +257,26 @@ export const UnifiedSearch = ({ onSearch, searchResults, isSearching }: UnifiedS
                                 View post <ExternalLink className="h-3 w-3" />
                               </a>
                             </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Related Questions (only for AI responses) */}
+                    {result.type === 'ai' && (
+                      <div className="pt-3 border-t border-slate-700/50">
+                        <p className="text-xs text-slate-400 font-medium mb-2">Related questions:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {relatedQuestions.slice(0, 3).map((relatedQ, relatedIndex) => (
+                            <Button
+                              key={relatedIndex}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleSuggestedQuestion(relatedQ)}
+                              className="h-7 px-3 text-xs bg-slate-800/30 border-slate-600/50 hover:bg-slate-700/50 text-slate-400 hover:text-slate-300"
+                            >
+                              {relatedQ}
+                            </Button>
                           ))}
                         </div>
                       </div>
