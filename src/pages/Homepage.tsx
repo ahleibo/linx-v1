@@ -11,6 +11,7 @@ import { ImportDialog } from '@/components/import/ImportDialog';
 import { UrlImportDialog } from '@/components/import/UrlImportDialog';
 import { TweetCard } from '@/components/posts/TweetCard';
 import { usePosts } from '@/hooks/usePosts';
+import { useTrendingTopics } from '@/hooks/useTrendingTopics';
 import { useAuth } from '@/hooks/useAuth';
 const Homepage = () => {
   const {
@@ -25,33 +26,17 @@ const Homepage = () => {
     setSearchQuery,
     isLoading
   } = usePosts();
+  const { data: trendingTopics = [], isLoading: isLoadingTopics } = useTrendingTopics();
   const [showVoiceSearch, setShowVoiceSearch] = useState(false);
+  
   const handleVoiceResult = (transcript: string) => {
     setSearchQuery(transcript);
     setShowVoiceSearch(false);
   };
+  
   const handleImportSuccess = () => {
     window.location.reload();
   };
-
-  // Mock trending topics for demo
-  const trendingTopics = [{
-    name: 'AI & Technology',
-    count: 24,
-    color: 'bg-blue-500'
-  }, {
-    name: 'Design',
-    count: 18,
-    color: 'bg-purple-500'
-  }, {
-    name: 'Startups',
-    count: 15,
-    color: 'bg-green-500'
-  }, {
-    name: 'Productivity',
-    count: 12,
-    color: 'bg-orange-500'
-  }];
 
   // Determine which posts to show based on search
   const postsToShow = searchQuery ? networkSearchResults.length > 0 ? networkSearchResults : filteredPosts : posts;
@@ -104,8 +89,8 @@ const Homepage = () => {
             </Badge>
           </div>}
 
-        {/* Trending Topics (only show when not searching) */}
-        {!searchQuery && <div className="space-y-4">
+        {/* Trending Topics (only show when not searching and there are topics) */}
+        {!searchQuery && !isLoadingTopics && trendingTopics.length > 0 && <div className="space-y-4">
             <div className="flex items-center space-x-2">
               <TrendingUp className="h-5 w-5 text-blue-400" />
               <h2 className="text-lg font-semibold">Trending in Your Network</h2>
@@ -115,7 +100,10 @@ const Homepage = () => {
               {trendingTopics.map(topic => <Card key={topic.name} className="bg-slate-800/30 border-slate-700 hover:bg-slate-800/50 transition-colors cursor-pointer">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <div className={`w-3 h-3 rounded-full ${topic.color}`} />
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: topic.color }}
+                      />
                       <Badge variant="secondary" className="bg-slate-700/50 text-slate-300 text-xs">
                         {topic.count}
                       </Badge>
