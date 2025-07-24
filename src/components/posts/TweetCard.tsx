@@ -1,9 +1,7 @@
 
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Repeat2, Bookmark, ExternalLink, Play } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Heart, MessageCircle, Repeat2, Share, MoreHorizontal } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 interface TweetCardProps {
@@ -31,7 +29,8 @@ interface TweetCardProps {
 }
 
 export const TweetCard = ({ post }: TweetCardProps) => {
-  const [expandedMedia, setExpandedMedia] = useState<string | null>(null);
+  const [isLiked, setIsLiked] = useState(false);
+  const [isRetweeted, setIsRetweeted] = useState(false);
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -42,11 +41,12 @@ export const TweetCard = ({ post }: TweetCardProps) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
     
-    if (diffInHours < 1) return 'now';
-    if (diffInHours < 24) return `${diffInHours}h`;
-    if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d`;
+    if (diffInSeconds < 60) return `${diffInSeconds}s`;
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d`;
     
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
@@ -55,206 +55,213 @@ export const TweetCard = ({ post }: TweetCardProps) => {
     return /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url) || url.includes('video');
   };
 
+  const handleLike = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsLiked(!isLiked);
+  };
+
+  const handleRetweet = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsRetweeted(!isRetweeted);
+  };
+
+  const handleReply = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Handle reply functionality
+  };
+
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Handle share functionality
+  };
+
   return (
-    <Card className="border-0 border-b border-slate-800 rounded-none bg-transparent hover:bg-slate-900/30 transition-colors cursor-pointer">
-      <CardContent className="p-4">
-        <div className="flex space-x-3">
-          {/* Avatar */}
-          <Avatar className="w-10 h-10 flex-shrink-0">
+    <article className="border-b border-gray-200 dark:border-gray-800 px-4 py-3 hover:bg-gray-50/50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer">
+      <div className="flex space-x-3">
+        {/* Avatar */}
+        <div className="flex-shrink-0">
+          <Avatar className="w-10 h-10">
             <AvatarImage src={post.author_avatar} alt={post.author_name} />
-            <AvatarFallback className="bg-slate-600 text-white text-sm">
+            <AvatarFallback className="bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium">
               {post.author_name.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
+        </div>
 
-          {/* Main Content */}
-          <div className="flex-1 min-w-0">
-            {/* Header */}
-            <div className="flex items-center space-x-2 mb-1">
-              <span className="font-bold text-white text-sm">{post.author_name}</span>
-              <span className="text-slate-500 text-sm">@{post.author_username}</span>
-              <span className="text-slate-500 text-sm">·</span>
-              <span className="text-slate-500 text-sm">{formatDate(post.created_at)}</span>
-              {post.x_url && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  asChild
-                  className="ml-auto text-slate-500 hover:text-slate-300 p-1 h-auto"
-                >
-                  <a href={post.x_url} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                </Button>
-              )}
+        {/* Main Content */}
+        <div className="flex-1 min-w-0">
+          {/* Header */}
+          <div className="flex items-center space-x-1 mb-1">
+            <span className="font-bold text-gray-900 dark:text-white text-[15px] hover:underline cursor-pointer">
+              {post.author_name}
+            </span>
+            <span className="text-gray-500 dark:text-gray-400 text-[15px]">
+              @{post.author_username}
+            </span>
+            <span className="text-gray-500 dark:text-gray-400 text-[15px]">·</span>
+            <span className="text-gray-500 dark:text-gray-400 text-[15px] hover:underline cursor-pointer">
+              {formatDate(post.created_at)}
+            </span>
+            <div className="ml-auto">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-1 h-auto w-auto rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
             </div>
+          </div>
 
-            {/* Content */}
-            <div className="text-white text-sm leading-normal mb-3 whitespace-pre-wrap">
-              {post.content}
-            </div>
+          {/* Tweet Content */}
+          <div className="text-gray-900 dark:text-white text-[15px] leading-5 mb-3 whitespace-pre-wrap">
+            {post.content}
+          </div>
 
-            {/* Media */}
-            {post.media_urls && post.media_urls.length > 0 && (
-              <div className="mb-3">
-                {post.media_urls.length === 1 ? (
-                  <div className="rounded-2xl overflow-hidden border border-slate-700 max-w-full bg-slate-900">
-                    {isVideo(post.media_urls[0]) ? (
-                      <div className="relative">
+          {/* Media */}
+          {post.media_urls && post.media_urls.length > 0 && (
+            <div className="mb-3">
+              {post.media_urls.length === 1 ? (
+                <div className="rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 max-w-full">
+                  {isVideo(post.media_urls[0]) ? (
+                    <video
+                      src={post.media_urls[0]}
+                      className="w-full max-h-[512px] object-cover bg-black"
+                      controls
+                      preload="metadata"
+                      playsInline
+                      muted
+                      poster=""
+                    />
+                  ) : (
+                    <img
+                      src={post.media_urls[0]}
+                      alt="Tweet image"
+                      className="w-full max-h-[512px] object-cover"
+                      loading="lazy"
+                    />
+                  )}
+                </div>
+              ) : (
+                <div className={`grid gap-0.5 rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 ${
+                  post.media_urls.length === 2 ? 'grid-cols-2' : 'grid-cols-2'
+                }`}>
+                  {post.media_urls.slice(0, 4).map((url, index) => (
+                    <div key={index} className="relative aspect-square">
+                      {isVideo(url) ? (
                         <video
-                          src={post.media_urls[0]}
-                          className="w-full max-h-96 object-contain bg-black"
-                          controls
+                          src={url}
+                          className="w-full h-full object-cover"
                           preload="metadata"
                           playsInline
                           muted
-                          crossOrigin="anonymous"
-                          onLoadStart={() => console.log('Video loading started')}
-                          onCanPlay={() => console.log('Video can play')}
-                          onError={(e) => {
-                            console.log('Video error:', e.currentTarget.error);
-                            // Try to extract video ID and use iframe embed instead
-                            const videoUrl = post.media_urls![0];
-                            if (videoUrl.includes('twitter.com') || videoUrl.includes('x.com')) {
-                              // For Twitter videos, show a fallback
-                              e.currentTarget.style.display = 'none';
-                              const fallbackDiv = e.currentTarget.parentElement?.querySelector('.video-fallback');
-                              if (fallbackDiv) {
-                                fallbackDiv.classList.remove('hidden');
-                              }
-                            }
-                          }}
+                          controls
                         />
-                        <div className="video-fallback hidden w-full h-48 bg-slate-800 flex flex-col items-center justify-center text-slate-400">
-                          <Play className="h-12 w-12 mb-2" />
-                          <p className="text-sm">Video content</p>
-                          <p className="text-xs">Click to view on original platform</p>
+                      ) : (
+                        <img
+                          src={url}
+                          alt={`Tweet image ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      )}
+                      {post.media_urls!.length > 4 && index === 3 && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                          <span className="text-white text-xl font-semibold">
+                            +{post.media_urls!.length - 4}
+                          </span>
                         </div>
-                      </div>
-                    ) : (
-                      <img
-                        src={post.media_urls[0]}
-                        alt="Post image"
-                        className="w-full max-h-96 object-cover"
-                        loading="lazy"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <div className={`grid gap-0.5 rounded-2xl overflow-hidden border border-slate-700 ${
-                    post.media_urls.length === 2 ? 'grid-cols-2' : 'grid-cols-2'
-                  }`}>
-                    {post.media_urls.slice(0, 4).map((url, index) => (
-                      <div key={index} className="relative aspect-square bg-slate-800">
-                        {isVideo(url) ? (
-                          <div className="relative w-full h-full bg-slate-900">
-                            <video
-                              src={url}
-                              className="w-full h-full object-cover"
-                              preload="metadata"
-                              playsInline
-                              muted
-                              controls
-                              crossOrigin="anonymous"
-                              onError={(e) => {
-                                console.log('Grid video error:', e.currentTarget.error);
-                                e.currentTarget.style.display = 'none';
-                                const fallback = document.createElement('div');
-                                fallback.className = 'w-full h-full bg-slate-800 flex flex-col items-center justify-center text-slate-400 text-xs';
-                                fallback.innerHTML = '<div class="text-center"><svg class="h-8 w-8 mx-auto mb-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><div>Video</div></div>';
-                                e.currentTarget.parentNode?.appendChild(fallback);
-                              }}
-                            />
-                          </div>
-                        ) : (
-                          <img
-                            src={url}
-                            alt={`Image ${index + 1}`}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                        )}
-                        {post.media_urls!.length > 4 && index === 3 && (
-                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                            <span className="text-white font-semibold">
-                              +{post.media_urls!.length - 4}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
-            {/* Topics */}
-            {post.post_topics && post.post_topics.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-3">
-                {post.post_topics.slice(0, 3).map((topicRel, index) => (
-                  <Badge
-                    key={index}
-                    variant="secondary"
-                    className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border-0"
-                  >
-                    {topicRel.topics.name}
-                  </Badge>
-                ))}
-                {post.post_topics.length > 3 && (
-                  <Badge className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border-0">
-                    +{post.post_topics.length - 3}
-                  </Badge>
-                )}
-              </div>
-            )}
+          {/* Engagement Actions */}
+          <div className="flex items-center justify-between max-w-md mt-1 -ml-2">
+            {/* Reply */}
+            <div className="flex items-center group">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleReply}
+                className="p-2 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-500 dark:text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors"
+              >
+                <MessageCircle className="h-[18px] w-[18px]" />
+              </Button>
+              {post.replies_count !== undefined && post.replies_count > 0 && (
+                <span className="text-[13px] text-gray-500 dark:text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 ml-1">
+                  {formatNumber(post.replies_count)}
+                </span>
+              )}
+            </div>
 
-            {/* Actions */}
-            <div className="flex items-center justify-between max-w-md mt-2">
-              <div className="flex items-center space-x-1 text-slate-500 hover:text-blue-400 transition-colors group">
-                <Button variant="ghost" size="sm" className="p-2 h-8 w-8 rounded-full group-hover:bg-blue-500/10">
-                  <MessageCircle className="h-4 w-4" />
-                </Button>
-                {post.replies_count !== undefined && (
-                  <span className="text-xs">{formatNumber(post.replies_count)}</span>
-                )}
-              </div>
+            {/* Retweet */}
+            <div className="flex items-center group">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRetweet}
+                className={`p-2 rounded-full hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors ${
+                  isRetweeted 
+                    ? 'text-green-500 dark:text-green-400' 
+                    : 'text-gray-500 dark:text-gray-400 group-hover:text-green-500 dark:group-hover:text-green-400'
+                }`}
+              >
+                <Repeat2 className="h-[18px] w-[18px]" />
+              </Button>
+              {post.retweets_count !== undefined && post.retweets_count > 0 && (
+                <span className={`text-[13px] ml-1 transition-colors ${
+                  isRetweeted 
+                    ? 'text-green-500 dark:text-green-400' 
+                    : 'text-gray-500 dark:text-gray-400 group-hover:text-green-500 dark:group-hover:text-green-400'
+                }`}>
+                  {formatNumber(post.retweets_count)}
+                </span>
+              )}
+            </div>
 
-              <div className="flex items-center space-x-1 text-slate-500 hover:text-green-400 transition-colors group">
-                <Button variant="ghost" size="sm" className="p-2 h-8 w-8 rounded-full group-hover:bg-green-500/10">
-                  <Repeat2 className="h-4 w-4" />
-                </Button>
-                {post.retweets_count !== undefined && (
-                  <span className="text-xs">{formatNumber(post.retweets_count)}</span>
-                )}
-              </div>
+            {/* Like */}
+            <div className="flex items-center group">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLike}
+                className={`p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors ${
+                  isLiked 
+                    ? 'text-red-500 dark:text-red-400' 
+                    : 'text-gray-500 dark:text-gray-400 group-hover:text-red-500 dark:group-hover:text-red-400'
+                }`}
+              >
+                <Heart className={`h-[18px] w-[18px] ${isLiked ? 'fill-current' : ''}`} />
+              </Button>
+              {post.likes_count !== undefined && post.likes_count > 0 && (
+                <span className={`text-[13px] ml-1 transition-colors ${
+                  isLiked 
+                    ? 'text-red-500 dark:text-red-400' 
+                    : 'text-gray-500 dark:text-gray-400 group-hover:text-red-500 dark:group-hover:text-red-400'
+                }`}>
+                  {formatNumber(post.likes_count)}
+                </span>
+              )}
+            </div>
 
-              <div className="flex items-center space-x-1 text-slate-500 hover:text-red-400 transition-colors group">
-                <Button variant="ghost" size="sm" className="p-2 h-8 w-8 rounded-full group-hover:bg-red-500/10">
-                  <Heart className="h-4 w-4" />
-                </Button>
-                {post.likes_count !== undefined && (
-                  <span className="text-xs">{formatNumber(post.likes_count)}</span>
-                )}
-              </div>
-
-              <div className="flex items-center space-x-1 text-slate-500 hover:text-blue-400 transition-colors group">
-                <Button variant="ghost" size="sm" className="p-2 h-8 w-8 rounded-full group-hover:bg-blue-500/10">
-                  <Bookmark className="h-4 w-4" />
-                </Button>
-                {post.bookmark_count !== undefined && post.bookmark_count > 0 && (
-                  <span className="text-xs">{formatNumber(post.bookmark_count)}</span>
-                )}
-              </div>
+            {/* Share */}
+            <div className="flex items-center group">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleShare}
+                className="p-2 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-500 dark:text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors"
+              >
+                <Share className="h-[18px] w-[18px]" />
+              </Button>
             </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </article>
   );
 };
