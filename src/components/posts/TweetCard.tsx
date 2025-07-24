@@ -52,7 +52,24 @@ export const TweetCard = ({ post }: TweetCardProps) => {
   };
 
   const isVideo = (url: string) => {
-    return /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url) || url.includes('video');
+    console.log('Checking if video:', url);
+    return /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url) || 
+           url.includes('video') || 
+           url.includes('mp4') ||
+           url.includes('twitter.com') ||
+           url.includes('t.co');
+  };
+
+  const getVideoEmbedUrl = (url: string) => {
+    // Handle Twitter video URLs
+    if (url.includes('twitter.com') || url.includes('t.co')) {
+      // Extract tweet ID and create embed URL
+      const tweetMatch = url.match(/status\/(\d+)/);
+      if (tweetMatch) {
+        return `https://platform.twitter.com/embed/Tweet.html?id=${tweetMatch[1]}`;
+      }
+    }
+    return url;
   };
 
   const handleLike = (e: React.MouseEvent) => {
@@ -124,29 +141,72 @@ export const TweetCard = ({ post }: TweetCardProps) => {
               {post.media_urls.length === 1 ? (
                 <div className="rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 max-w-full">
                   {isVideo(post.media_urls[0]) ? (
-                    <video
-                      key={post.media_urls[0]}
-                      className="w-full max-h-[512px] object-cover bg-black"
-                      controls
-                      preload="auto"
-                      playsInline
-                      webkit-playsinline="true"
-                      onLoadStart={(e) => {
-                        console.log('Video loading:', post.media_urls![0]);
-                        e.currentTarget.load();
-                      }}
-                      onError={(e) => {
-                        console.error('Video error:', e.currentTarget.error, post.media_urls![0]);
-                      }}
-                      onCanPlay={() => {
-                        console.log('Video can play');
-                      }}
-                    >
-                      <source src={post.media_urls[0]} type="video/mp4" />
-                      <source src={post.media_urls[0]} type="video/webm" />
-                      <source src={post.media_urls[0]} type="video/ogg" />
-                      Your browser does not support the video tag.
-                    </video>
+                    <>
+                      {/* Try iframe first for Twitter/social videos */}
+                      {(post.media_urls[0].includes('twitter.com') || post.media_urls[0].includes('t.co')) ? (
+                        <div className="w-full h-[400px] bg-gray-900 flex items-center justify-center">
+                          <div className="text-center text-gray-400">
+                            <div className="text-lg mb-2">🎥</div>
+                            <p className="text-sm">Video from {post.author_name}</p>
+                            <a 
+                              href={post.x_url || post.media_urls[0]} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-400 hover:text-blue-300 text-xs mt-1 block"
+                            >
+                              View on X/Twitter
+                            </a>
+                          </div>
+                        </div>
+                      ) : (
+                        <video
+                          key={post.media_urls[0]}
+                          className="w-full max-h-[512px] object-cover bg-black"
+                          controls
+                          preload="auto"
+                          playsInline
+                          webkit-playsinline="true"
+                          crossOrigin="anonymous"
+                          onLoadStart={(e) => {
+                            console.log('Video loading:', post.media_urls![0]);
+                            e.currentTarget.load();
+                          }}
+                          onError={(e) => {
+                            console.error('Video error:', e.currentTarget.error, post.media_urls![0]);
+                            // Hide video and show fallback
+                            e.currentTarget.style.display = 'none';
+                            const fallback = e.currentTarget.parentElement?.querySelector('.video-fallback');
+                            if (fallback) {
+                              fallback.classList.remove('hidden');
+                            }
+                          }}
+                          onCanPlay={() => {
+                            console.log('Video can play');
+                          }}
+                        >
+                          <source src={post.media_urls[0]} type="video/mp4" />
+                          <source src={post.media_urls[0]} type="video/webm" />
+                          <source src={post.media_urls[0]} type="video/ogg" />
+                          Your browser does not support the video tag.
+                        </video>
+                      )}
+                      
+                      {/* Fallback for failed videos */}
+                      <div className="video-fallback hidden w-full h-[400px] bg-gray-900 flex items-center justify-center">
+                        <div className="text-center text-gray-400">
+                          <div className="text-lg mb-2">🎥</div>
+                          <p className="text-sm">Video unavailable</p>
+                          <a 
+                            href={post.x_url || post.media_urls[0]} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-400 hover:text-blue-300 text-xs mt-1 block"
+                          >
+                            View original
+                          </a>
+                        </div>
+                      </div>
+                    </>
                   ) : (
                     <img
                       src={post.media_urls[0]}
