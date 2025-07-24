@@ -98,15 +98,29 @@ export const TweetCard = ({ post }: TweetCardProps) => {
             {post.media_urls && post.media_urls.length > 0 && (
               <div className="mb-3">
                 {post.media_urls.length === 1 ? (
-                  <div className="rounded-2xl overflow-hidden border border-slate-700 max-w-full">
+                  <div className="rounded-2xl overflow-hidden border border-slate-700 max-w-full bg-slate-800">
                     {isVideo(post.media_urls[0]) ? (
-                      <div className="relative bg-black">
+                      <div className="relative bg-slate-900 min-h-[200px] flex items-center justify-center">
                         <video
                           src={post.media_urls[0]}
                           className="w-full max-h-80 object-contain"
                           controls
                           preload="metadata"
+                          poster=""
+                          onError={(e) => {
+                            console.log('Video load error:', e);
+                            e.currentTarget.style.display = 'none';
+                            const fallback = document.createElement('div');
+                            fallback.className = 'w-full h-48 bg-slate-800 flex items-center justify-center text-slate-400 text-sm';
+                            fallback.textContent = 'Video unavailable';
+                            e.currentTarget.parentNode?.appendChild(fallback);
+                          }}
                         />
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="bg-white/90 rounded-full p-3">
+                            <Play className="h-6 w-6 text-black" fill="currentColor" />
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <img
@@ -114,6 +128,9 @@ export const TweetCard = ({ post }: TweetCardProps) => {
                         alt="Post image"
                         className="w-full max-h-80 object-cover"
                         loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
                       />
                     )}
                   </div>
@@ -124,15 +141,23 @@ export const TweetCard = ({ post }: TweetCardProps) => {
                     {post.media_urls.slice(0, 4).map((url, index) => (
                       <div key={index} className="relative aspect-square bg-slate-800">
                         {isVideo(url) ? (
-                          <div className="relative w-full h-full bg-black">
+                          <div className="relative w-full h-full bg-slate-900 flex items-center justify-center">
                             <video
                               src={url}
                               className="w-full h-full object-cover"
                               preload="metadata"
+                              onError={(e) => {
+                                console.log('Video load error:', e);
+                                e.currentTarget.style.display = 'none';
+                                const fallback = document.createElement('div');
+                                fallback.className = 'w-full h-full bg-slate-800 flex items-center justify-center text-slate-400 text-xs';
+                                fallback.textContent = 'Video unavailable';
+                                e.currentTarget.parentNode?.appendChild(fallback);
+                              }}
                             />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="bg-black/50 rounded-full p-2">
-                                <Play className="h-4 w-4 text-white" fill="white" />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <div className="bg-white/90 rounded-full p-2">
+                                <Play className="h-4 w-4 text-black" fill="currentColor" />
                               </div>
                             </div>
                           </div>
@@ -142,6 +167,9 @@ export const TweetCard = ({ post }: TweetCardProps) => {
                             alt={`Image ${index + 1}`}
                             className="w-full h-full object-cover"
                             loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
                           />
                         )}
                         {post.media_urls!.length > 4 && index === 3 && (
