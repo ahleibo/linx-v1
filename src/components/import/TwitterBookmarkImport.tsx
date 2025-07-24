@@ -78,9 +78,14 @@ export const TwitterBookmarkImport = () => {
     const result = await TwitterAuthService.importBookmarks();
     
     if (result.success) {
+      const skippedText = result.skipped > 0 ? ` (${result.skipped} already existed)` : '';
+      const moreText = result.hasMorePages 
+        ? ' Click import again to get the next 5 posts.' 
+        : ' No more posts to import.';
+      
       toast({
         title: "Import Successful!",
-        description: `Successfully imported ${result.imported || 0} bookmarked posts.`,
+        description: `Successfully imported ${result.imported || 0} bookmarked posts${skippedText}.${moreText}`,
       });
     } else {
       // Check if it's a rate limit error
@@ -220,7 +225,7 @@ export const TwitterBookmarkImport = () => {
                 ) : (
                   <>
                     <Download className="h-4 w-4 mr-2" />
-                    Import All Bookmarks
+                    Import Next 5 Bookmarks
                   </>
                 )}
               </Button>
@@ -235,7 +240,8 @@ export const TwitterBookmarkImport = () => {
             </div>
             
             <div className="text-xs text-slate-500 space-y-1">
-              <p>• Imports all your Twitter bookmarks</p>
+              <p>• Imports your 5 most recent unimported bookmarks</p>
+              <p>• Click import again to get the next 5 posts</p>
               <p>• Preserves original post data and media</p>
               <p>• Safe and secure OAuth connection</p>
             </div>

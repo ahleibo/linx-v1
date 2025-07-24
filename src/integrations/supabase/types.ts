@@ -113,6 +113,36 @@ export type Database = {
         }
         Relationships: []
       }
+      import_pagination: {
+        Row: {
+          created_at: string
+          id: string
+          import_type: string
+          last_imported_at: string | null
+          next_token: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          import_type?: string
+          last_imported_at?: string | null
+          next_token?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          import_type?: string
+          last_imported_at?: string | null
+          next_token?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       post_topics: {
         Row: {
           confidence_score: number | null

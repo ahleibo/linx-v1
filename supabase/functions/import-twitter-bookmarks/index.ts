@@ -101,6 +101,21 @@ serve(async (req) => {
       );
     }
 
+    // Get pagination state
+    console.log('Getting pagination state...');
+    const { data: paginationState, error: paginationError } = await supabase
+      .from('import_pagination')
+      .select('next_token')
+      .eq('user_id', user.id)
+      .eq('import_type', 'twitter_bookmarks')
+      .single();
+
+    console.log('Pagination state:', { 
+      hasState: !!paginationState, 
+      hasToken: !!paginationState?.next_token,
+      error: paginationError?.message 
+    });
+
     console.log('Fetching user info from Twitter API first...');
 
     // First, get the authenticated user's info to get their Twitter ID
@@ -136,21 +151,29 @@ serve(async (req) => {
 
     console.log('Fetching bookmarks from Twitter API...');
 
-    // Now fetch bookmarks using the correct endpoint with user ID
-    const bookmarksResponse = await fetch(
-      `https://api.twitter.com/2/users/${twitterUserId}/bookmarks?` +
+    // Build URL with pagination token if available
+    let bookmarksUrl = `https://api.twitter.com/2/users/${twitterUserId}/bookmarks?` +
       'max_results=5&' +  // Reduced to 5 to minimize rate limit impact
       'tweet.fields=id,text,author_id,created_at,public_metrics,entities,attachments&' +
       'expansions=author_id,attachments.media_keys&' +
       'user.fields=id,username,name,profile_image_url&' +
-      'media.fields=media_key,type,url,preview_image_url,alt_text',
-      {
-        headers: {
-          'Authorization': `Bearer ${connection.access_token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+      'media.fields=media_key,type,url,preview_image_url,alt_text';
+
+    // Add pagination token if we have one (skip errors as it might be first import)
+    if (paginationState?.next_token) {
+      bookmarksUrl += `&pagination_token=${paginationState.next_token}`;
+      console.log('Using pagination token for next batch');
+    } else {
+      console.log('No pagination token - fetching most recent bookmarks');
+    }
+
+    // Now fetch bookmarks using the correct endpoint with user ID
+    const bookmarksResponse = await fetch(bookmarksUrl, {
+      headers: {
+        'Authorization': `Bearer ${connection.access_token}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
     console.log('Twitter API response status:', bookmarksResponse.status);
     console.log('Twitter API response headers:', Object.fromEntries(bookmarksResponse.headers.entries()));
@@ -288,11 +311,33 @@ serve(async (req) => {
       }
     }
 
+    // Save pagination state for next import
+    const nextToken = bookmarksData.meta?.next_token;
+    console.log('Saving pagination state, next_token:', nextToken);
+    
+    if (nextToken || paginationState) {
+      const { error: paginationSaveError } = await supabase
+        .from('import_pagination')
+        .upsert({
+          user_id: user.id,
+          import_type: 'twitter_bookmarks',
+          next_token: nextToken, // Will be null if no more pages
+          last_imported_at: new Date().toISOString()
+        });
+
+      if (paginationSaveError) {
+        console.error('Error saving pagination state:', paginationSaveError);
+      } else {
+        console.log('Pagination state saved successfully');
+      }
+    }
+
     console.log('Import completed:', {
       total: tweets.length,
       imported: importedCount,
       skipped: skippedCount,
-      errors: errors.length
+      errors: errors.length,
+      hasMorePages: !!nextToken
     });
 
     return new Response(
@@ -301,6 +346,7 @@ serve(async (req) => {
         imported: importedCount,
         skipped: skippedCount,
         total: tweets.length,
+        hasMorePages: !!nextToken,
         errors: errors.length > 0 ? errors : undefined
       }),
       { 

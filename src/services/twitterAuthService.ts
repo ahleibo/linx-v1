@@ -193,7 +193,13 @@ export class TwitterAuthService {
   }
 
   // Import bookmarks from Twitter
-  static async importBookmarks(): Promise<{ success: boolean; error?: string; imported?: number }> {
+  static async importBookmarks(): Promise<{ 
+    success: boolean; 
+    error?: string; 
+    imported?: number; 
+    skipped?: number; 
+    hasMorePages?: boolean;
+  }> {
     try {
       const token = await this.getAuthToken();
       if (!token) {
@@ -213,7 +219,9 @@ export class TwitterAuthService {
 
       return { 
         success: true, 
-        imported: data?.imported || 0 
+        imported: data?.imported || 0,
+        skipped: data?.skipped || 0,
+        hasMorePages: data?.hasMorePages || false
       };
     } catch (error: any) {
       return { success: false, error: error.message || 'Failed to import bookmarks' };
