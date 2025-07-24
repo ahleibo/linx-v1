@@ -98,35 +98,44 @@ export const TweetCard = ({ post }: TweetCardProps) => {
             {post.media_urls && post.media_urls.length > 0 && (
               <div className="mb-3">
                 {post.media_urls.length === 1 ? (
-                  <div className="rounded-2xl overflow-hidden border border-slate-700 max-w-full bg-slate-800">
+                  <div className="rounded-2xl overflow-hidden border border-slate-700 max-w-full bg-slate-900">
                     {isVideo(post.media_urls[0]) ? (
-                      <div className="relative bg-slate-900 min-h-[200px] flex items-center justify-center">
+                      <div className="relative">
                         <video
                           src={post.media_urls[0]}
-                          className="w-full max-h-80 object-contain"
+                          className="w-full max-h-96 object-contain bg-black"
                           controls
                           preload="metadata"
-                          poster=""
+                          playsInline
+                          muted
+                          crossOrigin="anonymous"
+                          onLoadStart={() => console.log('Video loading started')}
+                          onCanPlay={() => console.log('Video can play')}
                           onError={(e) => {
-                            console.log('Video load error:', e);
-                            e.currentTarget.style.display = 'none';
-                            const fallback = document.createElement('div');
-                            fallback.className = 'w-full h-48 bg-slate-800 flex items-center justify-center text-slate-400 text-sm';
-                            fallback.textContent = 'Video unavailable';
-                            e.currentTarget.parentNode?.appendChild(fallback);
+                            console.log('Video error:', e.currentTarget.error);
+                            // Try to extract video ID and use iframe embed instead
+                            const videoUrl = post.media_urls![0];
+                            if (videoUrl.includes('twitter.com') || videoUrl.includes('x.com')) {
+                              // For Twitter videos, show a fallback
+                              e.currentTarget.style.display = 'none';
+                              const fallbackDiv = e.currentTarget.parentElement?.querySelector('.video-fallback');
+                              if (fallbackDiv) {
+                                fallbackDiv.classList.remove('hidden');
+                              }
+                            }
                           }}
                         />
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <div className="bg-white/90 rounded-full p-3">
-                            <Play className="h-6 w-6 text-black" fill="currentColor" />
-                          </div>
+                        <div className="video-fallback hidden w-full h-48 bg-slate-800 flex flex-col items-center justify-center text-slate-400">
+                          <Play className="h-12 w-12 mb-2" />
+                          <p className="text-sm">Video content</p>
+                          <p className="text-xs">Click to view on original platform</p>
                         </div>
                       </div>
                     ) : (
                       <img
                         src={post.media_urls[0]}
                         alt="Post image"
-                        className="w-full max-h-80 object-cover"
+                        className="w-full max-h-96 object-cover"
                         loading="lazy"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
@@ -141,25 +150,24 @@ export const TweetCard = ({ post }: TweetCardProps) => {
                     {post.media_urls.slice(0, 4).map((url, index) => (
                       <div key={index} className="relative aspect-square bg-slate-800">
                         {isVideo(url) ? (
-                          <div className="relative w-full h-full bg-slate-900 flex items-center justify-center">
+                          <div className="relative w-full h-full bg-slate-900">
                             <video
                               src={url}
                               className="w-full h-full object-cover"
                               preload="metadata"
+                              playsInline
+                              muted
+                              controls
+                              crossOrigin="anonymous"
                               onError={(e) => {
-                                console.log('Video load error:', e);
+                                console.log('Grid video error:', e.currentTarget.error);
                                 e.currentTarget.style.display = 'none';
                                 const fallback = document.createElement('div');
-                                fallback.className = 'w-full h-full bg-slate-800 flex items-center justify-center text-slate-400 text-xs';
-                                fallback.textContent = 'Video unavailable';
+                                fallback.className = 'w-full h-full bg-slate-800 flex flex-col items-center justify-center text-slate-400 text-xs';
+                                fallback.innerHTML = '<div class="text-center"><svg class="h-8 w-8 mx-auto mb-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><div>Video</div></div>';
                                 e.currentTarget.parentNode?.appendChild(fallback);
                               }}
                             />
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <div className="bg-white/90 rounded-full p-2">
-                                <Play className="h-4 w-4 text-black" fill="currentColor" />
-                              </div>
-                            </div>
                           </div>
                         ) : (
                           <img
