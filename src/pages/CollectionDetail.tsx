@@ -183,7 +183,11 @@ const CollectionDetail = () => {
         {posts.length > 0 ? (
           <div className="space-y-4">
             {posts.map((post) => (
-              <TweetCard key={post.id} post={post} />
+              <TweetCard 
+                key={post.id} 
+                post={post} 
+                onDelete={() => window.location.reload()} 
+              />
             ))}
           </div>
         ) : (

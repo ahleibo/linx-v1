@@ -126,7 +126,13 @@ const Homepage = () => {
                   </CardContent>
                 </Card>)}
             </div> : postsToShow.length > 0 ? <div className="space-y-3">
-              {postsToShow.slice(0, 10).map(post => <TweetCard key={post.id} post={post} />)}
+              {postsToShow.slice(0, 10).map(post => (
+                <TweetCard 
+                  key={post.id} 
+                  post={post} 
+                  onDelete={() => window.location.reload()} 
+                />
+              ))}
             </div> : searchQuery ? <Card className="bg-slate-800/30 border-slate-700">
               <CardContent className="p-8 text-center">
                 <div className="text-slate-400 space-y-4">

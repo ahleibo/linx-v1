@@ -1,8 +1,16 @@
 
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Repeat2, Share, MoreHorizontal } from 'lucide-react';
+import { Heart, MessageCircle, Repeat2, Share, MoreHorizontal, Trash2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface TweetCardProps {
   post: {
@@ -26,11 +34,14 @@ interface TweetCardProps {
       };
     }>;
   };
+  onDelete?: (postId: string) => void;
 }
 
-export const TweetCard = ({ post }: TweetCardProps) => {
+export const TweetCard = ({ post, onDelete }: TweetCardProps) => {
   const [isLiked, setIsLiked] = useState(false);
   const [isRetweeted, setIsRetweeted] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { toast } = useToast();
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -92,6 +103,38 @@ export const TweetCard = ({ post }: TweetCardProps) => {
     // Handle share functionality
   };
 
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isDeleting) return;
+    
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', post.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Post deleted",
+        description: "The post has been successfully deleted.",
+      });
+
+      // Call the onDelete callback if provided
+      onDelete?.(post.id);
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the post. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <article className="border-b border-gray-200 dark:border-gray-800 px-4 py-3 hover:bg-gray-50/50 dark:hover:bg-gray-900/50 transition-colors cursor-pointer">
       <div className="flex space-x-3">
@@ -120,13 +163,27 @@ export const TweetCard = ({ post }: TweetCardProps) => {
               {formatDate(post.created_at)}
             </span>
             <div className="ml-auto">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-1 h-auto w-auto rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="p-1 h-auto w-auto rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-slate-800 border-slate-700 text-white">
+                  <DropdownMenuItem 
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="focus:bg-red-900/20 text-red-400 hover:text-red-300"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {isDeleting ? 'Deleting...' : 'Delete post'}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 

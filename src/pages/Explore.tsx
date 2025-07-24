@@ -143,7 +143,11 @@ const Explore = () => {
             ) : allSearchResults.length > 0 ? (
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {allSearchResults.map((post) => (
-                  <TweetCard key={post.id} post={post} />
+                  <TweetCard 
+                    key={post.id} 
+                    post={post} 
+                    onDelete={() => window.location.reload()} 
+                  />
                 ))}
               </div>
             ) : (
