@@ -125,14 +125,28 @@ export const TweetCard = ({ post }: TweetCardProps) => {
                 <div className="rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 max-w-full">
                   {isVideo(post.media_urls[0]) ? (
                     <video
-                      src={post.media_urls[0]}
+                      key={post.media_urls[0]}
                       className="w-full max-h-[512px] object-cover bg-black"
                       controls
-                      preload="metadata"
+                      preload="auto"
                       playsInline
-                      muted
-                      poster=""
-                    />
+                      webkit-playsinline="true"
+                      onLoadStart={(e) => {
+                        console.log('Video loading:', post.media_urls![0]);
+                        e.currentTarget.load();
+                      }}
+                      onError={(e) => {
+                        console.error('Video error:', e.currentTarget.error, post.media_urls![0]);
+                      }}
+                      onCanPlay={() => {
+                        console.log('Video can play');
+                      }}
+                    >
+                      <source src={post.media_urls[0]} type="video/mp4" />
+                      <source src={post.media_urls[0]} type="video/webm" />
+                      <source src={post.media_urls[0]} type="video/ogg" />
+                      Your browser does not support the video tag.
+                    </video>
                   ) : (
                     <img
                       src={post.media_urls[0]}
@@ -150,13 +164,24 @@ export const TweetCard = ({ post }: TweetCardProps) => {
                     <div key={index} className="relative aspect-square">
                       {isVideo(url) ? (
                         <video
-                          src={url}
-                          className="w-full h-full object-cover"
-                          preload="metadata"
+                          key={url}
+                          className="w-full h-full object-cover bg-black"
+                          preload="auto"
                           playsInline
-                          muted
+                          webkit-playsinline="true"
                           controls
-                        />
+                          onLoadStart={(e) => {
+                            e.currentTarget.load();
+                          }}
+                          onError={(e) => {
+                            console.error('Grid video error:', e.currentTarget.error, url);
+                          }}
+                        >
+                          <source src={url} type="video/mp4" />
+                          <source src={url} type="video/webm" />
+                          <source src={url} type="video/ogg" />
+                          Your browser does not support the video tag.
+                        </video>
                       ) : (
                         <img
                           src={url}
