@@ -85,6 +85,11 @@ const Collections = () => {
 
   const displayCollections = collections.length > 0 ? collections : topicCollections;
 
+  const handleCollectionClick = (collection: any) => {
+    const type = collections.length > 0 ? 'collection' : 'topic';
+    navigate(`/collections/${type}/${collection.id}`);
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -158,6 +163,7 @@ const Collections = () => {
               <Card 
                 key={collection.id} 
                 className="bg-slate-800/30 border-slate-700 hover:bg-slate-800/50 transition-all duration-200 cursor-pointer group"
+                onClick={() => handleCollectionClick(collection)}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between mb-2">

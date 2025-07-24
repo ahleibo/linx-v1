@@ -10,6 +10,7 @@ import Homepage from "./pages/Homepage";
 import Explore from "./pages/Explore";
 import Profile from "./pages/Profile";
 import Collections from "./pages/Collections";
+import CollectionDetail from "./pages/CollectionDetail";
 import NotFound from "./pages/NotFound";
 import BottomNavigation from "./components/navigation/BottomNavigation";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
@@ -47,6 +48,11 @@ const AppContent = () => {
         <Route path="/collections" element={
           <ProtectedRoute>
             <Collections />
+          </ProtectedRoute>
+        } />
+        <Route path="/collections/:type/:collectionId" element={
+          <ProtectedRoute>
+            <CollectionDetail />
           </ProtectedRoute>
         } />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
