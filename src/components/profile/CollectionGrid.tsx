@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +18,7 @@ interface Collection {
 
 export const CollectionGrid: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const { data: collections = [], isLoading } = useQuery({
     queryKey: ['user-collections', user?.id],
@@ -78,6 +80,11 @@ export const CollectionGrid: React.FC = () => {
 
   const displayCollections = collections.length > 0 ? collections : topicCollections;
 
+  const handleCollectionClick = (collection: any) => {
+    const type = collections.length > 0 ? 'collection' : 'topic';
+    navigate(`/collections/${type}/${collection.id}`);
+  };
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 gap-4">
@@ -100,6 +107,7 @@ export const CollectionGrid: React.FC = () => {
         <Card 
           key={collection.id} 
           className="bg-slate-800/30 border-slate-700 hover:bg-slate-800/50 transition-all duration-200 cursor-pointer group"
+          onClick={() => handleCollectionClick(collection)}
         >
           <CardContent className="p-4">
             <div className="flex items-start justify-between mb-2">
