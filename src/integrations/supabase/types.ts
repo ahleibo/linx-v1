@@ -659,22 +659,6 @@ export type Database = {
           id: string | null
           username: string | null
         }
-        Insert: {
-          avatar_url?: string | null
-          bio?: string | null
-          created_at?: string | null
-          full_name?: string | null
-          id?: string | null
-          username?: string | null
-        }
-        Update: {
-          avatar_url?: string | null
-          bio?: string | null
-          created_at?: string | null
-          full_name?: string | null
-          id?: string | null
-          username?: string | null
-        }
         Relationships: []
       }
     }
@@ -686,6 +670,17 @@ export type Database = {
       get_complete_tweet_data: {
         Args: { tweet_id: string }
         Returns: Json
+      }
+      get_public_profiles: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          avatar_url: string
+          bio: string
+          created_at: string
+          full_name: string
+          id: string
+          username: string
+        }[]
       }
       get_user_public_stats: {
         Args: { user_uuid: string }
